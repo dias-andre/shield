@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"shield/pkg/crypto"
+	"github.com/dias-andre/shield/pkg/crypto"
 )
 
 func GetDataPath() (string, error) {

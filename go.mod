@@ -1,10 +1,11 @@
-module shield
+module github.com/dias-andre/shield
 
 go 1.25.6
 
 require (
 	al.essio.dev/pkg/shellescape v1.5.1 // indirect
 	github.com/AlecAivazis/survey/v2 v2.3.7 // indirect
+	github.com/briandowns/spinner v1.23.2 // indirect
 	github.com/danieljoos/wincred v1.2.2 // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
@@ -17,6 +18,6 @@ require (
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/zalando/go-keyring v0.2.6 // indirect
 	golang.org/x/sys v0.26.0 // indirect
-	golang.org/x/term v0.0.0-20210927222741-03fcf44c2211 // indirect
+	golang.org/x/term v0.1.0 // indirect
 	golang.org/x/text v0.4.0 // indirect
 )

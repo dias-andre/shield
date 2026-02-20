@@ -1,8 +1,9 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
-	"shield/pkg/crypto"
+	"github.com/dias-andre/shield/pkg/crypto"
 
 	"github.com/fatih/color"
 
@@ -17,9 +18,9 @@ var setupCmd = &cobra.Command{
 
 		fmt.Println("Generating master key...")
 		key, err := crypto.GenerateAndStoreMasterKey()
-		if err != nil {
-			color.HiRed("Failed to generate master key...")
-			color.HiWhite("Shield only supports GUI environments")
+		if errors.Is(err, crypto.ErrMasterKeyAlreadyExists) {
+			fmt.Println("A master key already exists!")
+			return
 		}
 
 		color.HiGreen("Master key generated!")

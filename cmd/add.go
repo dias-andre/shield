@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"shield/pkg/vault"
+	"github.com/dias-andre/shield/pkg/vault"
 	"strings"
 
 	"github.com/AlecAivazis/survey/v2"

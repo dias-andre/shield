@@ -1,11 +1,10 @@
 package crypto
 
 import (
-	"encoding/base64"
 	"crypto/rand"
-	"os"
-
-	"github.com/fatih/color"
+	"encoding/base64"
+	"errors"
+	
 	"github.com/zalando/go-keyring"
 )
 
@@ -14,10 +13,11 @@ const (
 	keyName = "master-key"
 )
 
+var ErrMasterKeyAlreadyExists = errors.New("A master key already exists!")
+
 func GenerateAndStoreMasterKey() (string, error) {
 	if _, err := GetMasterKey(); err == nil {
-		color.HiRed("A master key already exists!")
-		os.Exit(0)
+		return "", ErrMasterKeyAlreadyExists
 	}
 
 	keyBytes := make([]byte, 32)

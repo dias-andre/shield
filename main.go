@@ -1,6 +1,6 @@
 package main
 
-import "shield/cmd"
+import "github.com/dias-andre/shield/cmd"
 
 func main() {
 	cmd.Execute()
