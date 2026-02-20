@@ -2,6 +2,7 @@ package vault
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,7 +10,14 @@ import (
 	"github.com/dias-andre/shield/pkg/crypto"
 )
 
-func GetDataPath() (string, error) {
+var ErrVaultFileNotExists = errors.New("Vault file not exists!")
+
+func InitVault(masterKey string) error {
+	v := NewVault()
+	return saveVaultToFile(v, masterKey)
+}
+
+func getDataPath() (string, error) {
 	dataHome := os.Getenv("XDG_DATA_HOME")
 	if dataHome == "" {
 		home, err := os.UserHomeDir()
@@ -31,26 +39,53 @@ func GetDataPath() (string, error) {
 func GetVault(masterKey string) (Vault, error) {
 	var v Vault
 
-	dataPath, err := GetDataPath()
+	dataPath, err := getDataPath()
 	if err != nil {
 		return v, err
 	}
 
 	encryptedContent, err := os.ReadFile(dataPath)
 	if err != nil {
-		return v, err
+		if os.IsNotExist(err) {
+			return v, ErrVaultFileNotExists
+		}
+		
+		return v, err	
 	}
 
 	plaintext, err := crypto.DecryptVault(encryptedContent, masterKey)
+	if err != nil { return v, err }
+
 	err = json.Unmarshal(plaintext, &v)
+	if err != nil { return v, err }
 	return v, nil
 }
 
-func SaveVault(encryptedPayload []byte) error {
-	path, err := GetDataPath()
-	if err != nil {
-		return err
-	}
+func AddSshEntry(entry SSHEntry, masterKey string) error {
+	v, err := GetVault(masterKey)
 
-	return os.WriteFile(path, encryptedPayload, 0600)
+	if err != nil {
+		if errors.Is(err, ErrVaultFileNotExists) {
+			v = NewVault()
+		} else {
+			return err
+		}
+	}	
+
+	v.Entries[entry.Name] = entry
+
+	return saveVaultToFile(v, masterKey)
+}
+
+func saveVaultToFile(v Vault, masterkey string) error {
+	jsonData, err := json.Marshal(v)
+	if err != nil { return err }
+
+	vaultEncrypted, err := crypto.EncryptVault(jsonData, masterkey)
+	if err != nil { return err }
+
+	path, err := getDataPath()
+	if err != nil { return err }
+
+	return os.WriteFile(path, vaultEncrypted, 0600)
 }
