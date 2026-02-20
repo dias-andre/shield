@@ -22,3 +22,9 @@ type SSHEntry struct {
 type Vault struct {
 	Entries map[string]SSHEntry `json:"entries"`
 }
+
+func NewVault() Vault {
+	return Vault{
+		Entries: make(map[string]SSHEntry),
+	}
+}
