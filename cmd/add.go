@@ -4,20 +4,24 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"github.com/dias-andre/shield/pkg/vault"
 	"strings"
+	"time"
+
+	"github.com/briandowns/spinner"
+	"github.com/dias-andre/shield/pkg/crypto"
+	"github.com/dias-andre/shield/pkg/vault"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
 )
 
 var addCmd = &cobra.Command{
-	Use: "add",
+	Use:   "add",
 	Short: "Add entries to Vault",
 }
 
 var addServer = &cobra.Command{
-	Use: "server [name] [user] [host] [authentication]",
+	Use:   "server [name] [user] [host] [authentication]",
 	Short: "Add a new SSH server to Vault",
 	// Args: cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -39,7 +43,7 @@ var addServer = &cobra.Command{
 		if name == "" {
 			promptName := &survey.Input{
 				Message: "Create a name for your server",
-				Help: "Example: 192.168.0.1 or myawspc",
+				Help:    "Example: 192.168.0.1 or myawspc",
 			}
 			err := survey.AskOne(promptName, &name)
 			if err != nil {
@@ -60,7 +64,7 @@ var addServer = &cobra.Command{
 		if host == "" {
 			promptHost := &survey.Input{
 				Message: "Type your SSH host",
-				Help: "Example: 192.168.15.1 or myserver.aws.com",
+				Help:    "Example: 192.168.15.1 or myserver.aws.com",
 			}
 			err := survey.AskOne(promptHost, &host)
 			if err != nil {
@@ -91,27 +95,33 @@ var addServer = &cobra.Command{
 				err := survey.AskOne(&survey.Password{
 					Message: "Type your SSH password",
 				}, &auth)
-				if err != nil { return }
+				if err != nil {
+					return
+				}
 				authMethod = selectedAuth
 			case string(vault.AuthMethodKey):
 				err := survey.AskOne(&survey.Input{
 					Message: "Path to the private key (.pem or id_rsa):",
-					Help: "Example: ~/.ssh/id_rsa or /path/to/your/key/ssh.pem",
+					Help:    "Example: ~/.ssh/id_rsa or /path/to/your/key/ssh.pem",
 				}, &auth)
 				if err != nil {
 					return
 				}
 				authMethod = selectedAuth
-			default: 
+			default:
 				authMethod = string(vault.NoneAuthMethod)
 			}
 		}
 
+		sp := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
+		sp.Suffix = "Storing your SSH Credentials\n"
+		sp.Start()
+
 		entry := vault.SSHEntry{
-			Name: name,
-			User: user,
-			Port: 22,
-			Host: host,
+			Name:     name,
+			User:     user,
+			Port:     22,
+			Host:     host,
 			AuthType: vault.AuthMethod(authMethod),
 		}
 
@@ -126,12 +136,13 @@ var addServer = &cobra.Command{
 				os.Exit(1)
 			}
 			err = fileExistsValidator(expandedPath)
-			if(err != nil) {
+			if err != nil {
 				fmt.Printf("File %s not found\n", expandedPath)
 				os.Exit(1)
 			}
 			fileContent, err := os.ReadFile(expandedPath)
 			if err != nil {
+				sp.Stop()
 				fmt.Printf("Failed to Read file %s", auth)
 				os.Exit(1)
 			}
@@ -139,6 +150,23 @@ var addServer = &cobra.Command{
 			entry.PrivateKey = string(fileContent)
 			// fmt.Print(entry.PrivateKey)
 		}
+
+		masterKey, err := crypto.GetMasterKey()
+		if err != nil {
+			sp.Stop()
+			fmt.Printf("Failed to get master key: %s", err.Error())
+			os.Exit(1)
+		}
+
+		err =  vault.AddSshEntry(entry, masterKey)
+		if err != nil {
+			sp.Stop()
+			fmt.Printf("Failed to save credentials: %s", err.Error())
+			os.Exit(1)
+		}
+
+		sp.FinalMSG = "SSH Credentials saved!\n"
+		sp.Stop()
 	},
 }
 
