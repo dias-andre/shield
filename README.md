@@ -16,7 +16,7 @@ Shield acts as a local encrypted vault for your infrastructure credentials. Inst
 Make sure you have [Go](https://go.dev/) installed. Clone the repository and build the binary:
 
 ```bash
-git clone [https://github.com/dias-andre/shield.git](https://github.com/dias-andre/shield.git)
+git clone https://github.com/dias-andre/shield.git
 cd shield
 go build -o shield main.go
 
