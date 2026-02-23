@@ -16,6 +16,7 @@ func init() {
 	rootCmd.AddCommand(setupCmd)
 	rootCmd.AddCommand(addCmd)
 	rootCmd.AddCommand(lsCmd)
+	rootCmd.AddCommand(connectCmd)
 }
 
 func Execute() {
