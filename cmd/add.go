@@ -8,8 +8,7 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	"github.com/dias-andre/shield/pkg/crypto"
-	"github.com/dias-andre/shield/pkg/vault"
+	"github.com/dias-andre/shield/internal/core/domain"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
@@ -73,7 +72,7 @@ var addServer = &cobra.Command{
 		}
 
 		if strings.HasPrefix(auth, "file:") {
-			authMethod = string(vault.AuthMethodKey)
+			authMethod = string(domain.AuthMethodKey)
 			auth = strings.ReplaceAll(auth, "file:", "")
 		}
 
@@ -81,8 +80,8 @@ var addServer = &cobra.Command{
 			var selectedAuth string
 			promptAuth := &survey.Select{
 				Message: "What is your authentication method?",
-				Options: []string{string(vault.AuthMethodKey), string(vault.NoneAuthMethod)},
-				Default: string(vault.NoneAuthMethod),
+				Options: []string{string(domain.AuthMethodKey), string(domain.NoneAuthMethod)},
+				Default: string(domain.NoneAuthMethod),
 			}
 
 			err := survey.AskOne(promptAuth, &selectedAuth)
@@ -90,7 +89,7 @@ var addServer = &cobra.Command{
 				fmt.Println(err.Error())
 			}
 	
-			if(selectedAuth == string(vault.AuthMethodKey)) {
+			if(selectedAuth == string(domain.AuthMethodKey)) {
 				err := survey.AskOne(&survey.Input{
 					Message: "Path to the private key (.pem or id_rsa):",
 					Help:    "Example: ~/.ssh/id_rsa or /path/to/your/key/ssh.pem",
@@ -102,7 +101,7 @@ var addServer = &cobra.Command{
 				authMethod = selectedAuth
 
 			} else {
-				authMethod = string(vault.NoneAuthMethod)
+				authMethod = string(domain.NoneAuthMethod)
 			}	
 		}
 
@@ -110,15 +109,15 @@ var addServer = &cobra.Command{
 		sp.Suffix = "Storing your SSH Credentials\n"
 		sp.Start()
 
-		entry := vault.SSHEntry{
+		entry := domain.SSHEntry{
 			Name:     name,
 			User:     user,
 			Port:     22,
 			Host:     host,
-			AuthType: vault.AuthMethod(authMethod),
+			AuthType: domain.AuthMethod(authMethod),
 		}
 
-		if (entry.AuthType == vault.AuthMethodKey) {
+		if (entry.AuthType == domain.AuthMethodKey) {
 			// fmt.Println(auth)
 			expandedPath, err := expandPath(auth)
 			if err != nil {
@@ -141,14 +140,14 @@ var addServer = &cobra.Command{
 			// fmt.Print(entry.PrivateKey)
 		}
 
-		masterKey, err := crypto.GetMasterKey()
+		masterKey, err := keysystem.GetKey()
 		if err != nil {
 			sp.Stop()
 			fmt.Printf("Failed to get master key: %s", err.Error())
 			os.Exit(1)
 		}
 
-		err =  vault.AddSshEntry(entry, masterKey)
+		err =  vaultSystem.AddSshEntry(entry, masterKey)
 		if err != nil {
 			sp.Stop()
 			fmt.Printf("Failed to save credentials: %s", err.Error())

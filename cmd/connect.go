@@ -8,21 +8,23 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
-	"github.com/dias-andre/shield/pkg/crypto"
-	"github.com/dias-andre/shield/pkg/vault"
+	"github.com/dias-andre/shield/internal/core/domain"
+
 	"github.com/spf13/cobra"
 )
 
+var ErrNotPrivateKey = errors.New("The Authentication is not a private key")
+
 var connectCmd = &cobra.Command{
 	Use: "connect [name]",
-	Short: "Connect with a saved server",
+	Short: "Connect to a saved server",
 	Args: cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		sp := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
 		sp.Prefix = "Requesting master key...\n"
 		sp.Start()
 
-		masterKey, err := crypto.GetMasterKey()
+		masterKey, err := keysystem.GetKey()
 		if err != nil {
 			sp.FinalMSG = "Failed to get master key!\n"
 			sp.Stop()
@@ -31,7 +33,7 @@ var connectCmd = &cobra.Command{
 
 		sp.FinalMSG = "Master key obtained!\n"
 		sp.Stop()
-		v, err := vault.GetVault(masterKey)
+		v, err := vaultSystem.GetVault(masterKey)
 		if err != nil {
 			fmt.Println("Failed to get Vault")
 			os.Exit(1)
@@ -48,19 +50,18 @@ var connectCmd = &cobra.Command{
 		if err != nil {
 			fmt.Println(err.Error())
 		}
-		fmt.Print("\033[2A\033[J")
+		// fmt.Print("\033[2A\033[J")
 		fmt.Println("Shield closed successfully!")
 	},
 }
 
-var ErrNotPrivateKey = errors.New("The Authentication is not a private key")
 
-func connectSSH(entry vault.SSHEntry) error {
+func connectSSH(entry domain.SSHEntry) error {
 	target := fmt.Sprintf("%s@%s", entry.User, entry.Host)
 
 	var cmd *exec.Cmd
 
-	if entry.AuthType != vault.AuthMethodKey {
+	if entry.AuthType != domain.AuthMethodKey {
 		return ErrNotPrivateKey
 	}
 
@@ -84,7 +85,6 @@ func connectSSH(entry vault.SSHEntry) error {
 
 	cmd = exec.Command("ssh", "-i", tmpPath, target)
 	
-
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
