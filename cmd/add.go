@@ -81,36 +81,29 @@ var addServer = &cobra.Command{
 			var selectedAuth string
 			promptAuth := &survey.Select{
 				Message: "What is your authentication method?",
-				Options: []string{string(vault.AuthMethodPassword), string(vault.AuthMethodKey), string(vault.NoneAuthMethod)},
-				Default: string(vault.AuthMethodPassword),
+				Options: []string{string(vault.AuthMethodKey), string(vault.NoneAuthMethod)},
+				Default: string(vault.NoneAuthMethod),
 			}
 
 			err := survey.AskOne(promptAuth, &selectedAuth)
 			if err != nil {
-				return
+				fmt.Println(err.Error())
 			}
-
-			switch selectedAuth {
-			case string(vault.AuthMethodPassword):
-				err := survey.AskOne(&survey.Password{
-					Message: "Type your SSH password",
-				}, &auth)
-				if err != nil {
-					return
-				}
-				authMethod = selectedAuth
-			case string(vault.AuthMethodKey):
+	
+			if(selectedAuth == string(vault.AuthMethodKey)) {
 				err := survey.AskOne(&survey.Input{
 					Message: "Path to the private key (.pem or id_rsa):",
 					Help:    "Example: ~/.ssh/id_rsa or /path/to/your/key/ssh.pem",
 				}, &auth)
+				
 				if err != nil {
 					return
 				}
 				authMethod = selectedAuth
-			default:
+
+			} else {
 				authMethod = string(vault.NoneAuthMethod)
-			}
+			}	
 		}
 
 		sp := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
@@ -125,10 +118,7 @@ var addServer = &cobra.Command{
 			AuthType: vault.AuthMethod(authMethod),
 		}
 
-		switch entry.AuthType {
-		case vault.AuthMethodPassword:
-			entry.Password = auth
-		case vault.AuthMethodKey:
+		if (entry.AuthType == vault.AuthMethodKey) {
 			// fmt.Println(auth)
 			expandedPath, err := expandPath(auth)
 			if err != nil {
