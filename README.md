@@ -1,6 +1,6 @@
 # Shield CLI
 
-A secure, fast, and interactive command-line interface written in Go to manage your SSH servers, private keys, and passwords. 
+A secure, fast, and interactive command-line interface written in Go to manage your SSH servers, and private keys.
 
 Shield acts as a local encrypted vault for your infrastructure credentials. Instead of leaving private `.pem` or `id_rsa` files lying around in plaintext, Shield encrypts everything using **AES-GCM 256-bit** encryption. The master key is never stored in files; it is securely managed by your Operating System's native Keyring (Secret Service API via D-Bus, Keychain, or Credential Manager).
 
