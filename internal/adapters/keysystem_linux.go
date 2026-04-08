@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	dbusDest         = "org.freedesktop.secrets"
-	dbusPath         = "/org/freedesktop/secrets"
+	dbusDest = "org.freedesktop.secrets"
+	dbusPath = "/org/freedesktop/secrets"
 )
 
 type LinuxKeyring struct {
@@ -157,60 +157,56 @@ func (l *LinuxKeyring) getDefaultCollection() (dbus.ObjectPath, error) {
 	}
 
 	preferredCollections := []string{"kdewallet", "login", "default"}
+	var preferredPath dbus.ObjectPath
 
 	for _, prefName := range preferredCollections {
 		for _, collPath := range collections {
 			if strings.HasSuffix(string(collPath), "/"+prefName) {
-				var unlockedPaths []dbus.ObjectPath
-				var promptPath dbus.ObjectPath
+				preferredPath = collPath
+				break
+			}
+		}
+		if preferredPath != "" {
+			break
+		}
+	}
 
-				unlockCall := serviceObj.Call("org.freedesktop.Secret.Service.Unlock", 0,
-					[]dbus.ObjectPath{collPath},
-				)
-				err = unlockCall.Store(&unlockedPaths, &promptPath)
-				if err != nil {
-					continue
-				}
-
-				if promptPath != "/" {
-					_, err = l.handlePrompt(promptPath)
-					if err != nil {
-						continue
-					}
-				}
-
-				if len(unlockedPaths) > 0 {
-					return unlockedPaths[0], nil
-				}
+	if preferredPath == "" {
+		for _, collPath := range collections {
+			if !strings.HasSuffix(string(collPath), "/Shield") &&
+				!strings.HasPrefix(string(collPath), "/org/freedesktop/secrets/collection/Shield__") {
+				preferredPath = collPath
+				break
 			}
 		}
 	}
 
-	for _, collPath := range collections {
-		var unlockedPaths []dbus.ObjectPath
-		var promptPath dbus.ObjectPath
-		unlockCall := serviceObj.Call("org.freedesktop.Secret.Service.Unlock", 0,
-			[]dbus.ObjectPath{collPath},
-		)
+	if preferredPath == "" && len(collections) > 0 {
+		preferredPath = collections[0]
+	}
 
-		err = unlockCall.Store(&unlockedPaths, &promptPath)
+	var unlockedPaths []dbus.ObjectPath
+	var promptPath dbus.ObjectPath
+	unlockCall := serviceObj.Call("org.freedesktop.Secret.Service.Unlock", 0,
+		[]dbus.ObjectPath{preferredPath},
+	)
+	err = unlockCall.Store(&unlockedPaths, &promptPath)
+	if err != nil {
+		return "", fmt.Errorf("Failed to unlock collection: %v", err)
+	}
+
+	if promptPath != "/" {
+		_, err = l.handlePrompt(promptPath)
 		if err != nil {
-			continue
-		}
-
-		if promptPath != "/" {
-			_, err = l.handlePrompt(promptPath)
-			if err != nil {
-				continue
-			}
-		}
-
-		if len(unlockedPaths) > 0 {
-			return unlockedPaths[0], nil
+			return "", err
 		}
 	}
 
-	return "", fmt.Errorf("No valid collection found")
+	if len(unlockedPaths) > 0 {
+		return unlockedPaths[0], nil
+	}
+
+	return preferredPath, nil
 }
 
 func (l *LinuxKeyring) openSession(serviceObj dbus.BusObject) (dbus.ObjectPath, error) {
