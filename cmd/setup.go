@@ -3,7 +3,6 @@ package cmd
 import (
 	"crypto/rand"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -15,7 +14,7 @@ import (
 var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Initialize shield",
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		color.HiGreen("Thank you for choose shield!\n\n")
 		sp := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
 
@@ -26,37 +25,33 @@ var setupCmd = &cobra.Command{
 		if previousKey != nil {
 			sp.Suffix = "Stopped!"
 			sp.Stop()
-			color.HiGreen("A master key already exists!")
-			os.Exit(0)
+			color.Green("A master key already exists!")
+			return nil
 		}
 
 		key := make([]byte, 32)
 		if _, err := rand.Read(key); err != nil {
 			sp.Suffix = "Stopped!"
 			sp.Stop()
-			fmt.Println(err.Error())
-			os.Exit(1)
+			return fmt.Errorf("Operation failed: %s", err.Error())
 		}
 
 		err := keysystem.SaveKey(key)
 		if err != nil {
 			sp.Suffix = "Stopped!"
 			sp.Stop()
-			color.HiRed("Failed to save key...")
-			fmt.Println(err.Error())
-			os.Exit(1)
+			return fmt.Errorf("Failed to save key: %s", err.Error())
 		}
 
 		vault := vaultSystem.InitVault()
 		if err := vaultSystem.SaveVault(vault, key); err != nil {
 			sp.Suffix = "Stopped!"
 			sp.Stop()
-			color.HiRed("Failed to save vault...")
-			fmt.Println(err.Error())
-			os.Exit(1)
+			return fmt.Errorf("Failed to save file: %s", err.Error())
 		}
 
 		sp.FinalMSG = "Shield Vault created!\n"
 		sp.Stop()
+		return nil
 	},
 }

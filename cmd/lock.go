@@ -17,15 +17,15 @@ var lockCmd = &cobra.Command{
 		lockable, ok := keysystem.(ports.Lockable)
 
 		if !ok {
-			return fmt.Errorf("the current keysystem adapter does not support locking")
+			return fmt.Errorf("The current keysystem adapter does not support locking")
 		}
 
 		err := lockable.Lock()
 		if err != nil {
-			return fmt.Errorf("failed to lock shield: %w", err)
+			return fmt.Errorf("Failed to lock shield: %w", err)
 		}
 
-		color.HiGreen("🔒 Shield locked successfully!")
+		color.Green("🔒 Shield locked successfully!")
 		return nil
 	},
 }

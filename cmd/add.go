@@ -23,7 +23,7 @@ var addServer = &cobra.Command{
 	Use:   "server [name] [user] [host] [authentication]",
 	Short: "Add a new SSH server to Vault",
 	// Args: cobra.ExactArgs(3),
-	Run: func(cmd *cobra.Command, args []string) {
+	RunE: func(cmd *cobra.Command, args []string) error {
 		var name, user, host, auth, authMethod string
 
 		if len(args) > 0 {
@@ -46,7 +46,7 @@ var addServer = &cobra.Command{
 			}
 			err := survey.AskOne(promptName, &name)
 			if err != nil {
-				return
+				return fmt.Errorf("Operation failed: %s", err.Error())
 			}
 		}
 
@@ -56,7 +56,7 @@ var addServer = &cobra.Command{
 			}
 			err := survey.AskOne(promptUser, &user)
 			if err != nil {
-				return
+				return fmt.Errorf("Operation failed: %s", err.Error())
 			}
 		}
 
@@ -67,7 +67,7 @@ var addServer = &cobra.Command{
 			}
 			err := survey.AskOne(promptHost, &host)
 			if err != nil {
-				return
+				return fmt.Errorf("Operation failed: %s", err.Error())
 			}
 		}
 
@@ -86,7 +86,7 @@ var addServer = &cobra.Command{
 
 			err := survey.AskOne(promptAuth, &selectedAuth)
 			if err != nil {
-				fmt.Println(err.Error())
+				return fmt.Errorf("Operation failed: %s", err.Error())
 			}
 	
 			if(selectedAuth == string(domain.AuthMethodKey)) {
@@ -96,7 +96,7 @@ var addServer = &cobra.Command{
 				}, &auth)
 				
 				if err != nil {
-					return
+					return fmt.Errorf("Operation failed: %s", err.Error())
 				}
 				authMethod = selectedAuth
 
@@ -121,19 +121,16 @@ var addServer = &cobra.Command{
 			// fmt.Println(auth)
 			expandedPath, err := expandPath(auth)
 			if err != nil {
-				fmt.Printf("Operation failed: %s", err)
-				os.Exit(1)
+				return fmt.Errorf("Operation failed: %s", err.Error())
 			}
 			err = fileExistsValidator(expandedPath)
 			if err != nil {
-				fmt.Printf("File %s not found\n", expandedPath)
-				os.Exit(1)
+				return fmt.Errorf("Failed to read file: %s", err.Error())
 			}
 			fileContent, err := os.ReadFile(expandedPath)
 			if err != nil {
 				sp.Stop()
-				fmt.Printf("Failed to Read file %s", auth)
-				os.Exit(1)
+				return fmt.Errorf("Failed to read file: %s", err.Error())
 			}
 
 			entry.PrivateKey = string(fileContent)
@@ -143,19 +140,18 @@ var addServer = &cobra.Command{
 		masterKey, err := keysystem.GetKey()
 		if err != nil {
 			sp.Stop()
-			fmt.Printf("Failed to get master key: %s", err.Error())
-			os.Exit(1)
+			return fmt.Errorf("Failed to get master key: %s", err.Error())
 		}
 
 		err =  vaultSystem.AddSshEntry(entry, masterKey)
 		if err != nil {
 			sp.Stop()
-			fmt.Printf("Failed to save credentials: %s", err.Error())
-			os.Exit(1)
+			return fmt.Errorf("Failed to save credentials: %s", err.Error())
 		}
 
 		sp.FinalMSG = "SSH Credentials saved!\n"
 		sp.Stop()
+		return nil
 	},
 }
 

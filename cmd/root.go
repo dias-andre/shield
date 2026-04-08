@@ -16,6 +16,8 @@ var keysystem ports.KeySystemPort
 
 var rootCmd = &cobra.Command{
 	Use: "shield",
+	SilenceErrors: true,
+	SilenceUsage: true,
 	Short: "Tool for managing encrypted server keys",
 }
 
