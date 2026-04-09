@@ -43,6 +43,7 @@ func (s *VaultService) AddSshEntry(entry domain.SSHEntry, key []byte) error {
 			return err
 		}
 	}
+	defer v.Erase()
 
 	v.Entries[entry.Name] = entry
 
@@ -57,6 +58,7 @@ func (s *VaultService) AddSshEntry(entry domain.SSHEntry, key []byte) error {
 func (s *VaultService) DeleteSshEntry(entryName string, key []byte) error {
 	vault, err := s.GetVault(key)
 	if err != nil { return err }
+	defer vault.Erase()
 
 	if entry, ok := vault.Entries[entryName]; ok {
 		delete(vault.Entries, entry.Name)

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/AlecAivazis/survey/v2"
+	"github.com/dias-andre/shield/internal/utils"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 )
@@ -19,11 +20,13 @@ var rmCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("Failed to get key: %w", err)
 		}
+		defer utils.Clear(masterKey)
 		
 		vault, err := vaultSystem.GetVault(masterKey)
 		if err != nil {
 			return fmt.Errorf("Failed to get vault: %w", err)
 		}
+		defer vault.Erase()
 		
 		if _, ok := vault.Entries[args[0]]; !ok {
 			return fmt.Errorf("Server '%s' not found!", args[0])

@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+
 	"github.com/dias-andre/shield/internal/core/domain"
+	"github.com/dias-andre/shield/internal/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -26,6 +28,8 @@ var connectCmd = &cobra.Command{
 		if err != nil {
 			return fmt.Errorf("Failed to get vault: %s", err.Error())
 		}
+		defer utils.Clear(masterKey)
+		defer v.Erase()
 
 		entry, ok := v.Entries[args[0]]
 		if !ok {

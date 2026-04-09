@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	"github.com/dias-andre/shield/internal/utils"
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -22,6 +23,7 @@ var setupCmd = &cobra.Command{
 		sp.Start()
 
 		key, _ := keysystem.GetKey()
+		defer utils.Clear(key)
 		if key != nil {
 			sp.Suffix = "Stopped!"
 			sp.Stop()
@@ -45,6 +47,7 @@ var setupCmd = &cobra.Command{
 		vaultExists, err := vaultSystem.VaultExists()
 		if !vaultExists && err == nil {
 			vault := vaultSystem.InitVault()
+			defer vault.Erase()
 			if err := vaultSystem.SaveVault(vault, key); err != nil {
 				sp.Suffix = "Stopped!"
 				sp.Stop()
