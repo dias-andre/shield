@@ -25,6 +25,7 @@ var rootCmd = &cobra.Command{
 	Use: "shield",
 	SilenceErrors: true,
 	SilenceUsage: true,
+	Version: "v1.0.0-beta",
 	Short: "Tool for managing encrypted server keys",
 }
 
