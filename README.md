@@ -11,6 +11,19 @@ Shield acts as a local encrypted vault for your infrastructure credentials. Inst
 * **Interactive Prompts:** Beautiful and user-friendly terminal UI for adding resources, powered by `survey`.
 * **Zero Plaintext Files:** Private keys are ingested into the encrypted vault, keeping your `~/.ssh/` directory clean and safe.
 
+## ⚠️ Security Disclaimer & Project Status
+Shield is currently in a BETA state. This is a passion project focused on improving developer productivity and personal credential organization. While it uses industry-standard encryption (AES-GCM 256-bit) and secure OS Keyring integration, please keep the following in mind:
+
+- **Development Phase**: This tool is in early development. The architecture is simple by design and may undergo significant changes.
+
+- **Use at Your Own Risk**: It has not been through a formal security audit. Do not use it to store critical high-stakes infrastructure keys without understanding the underlying code.
+
+- **Beta Software**: You might encounter bugs. Always keep a secure, offline backup of your original private keys elsewhere while testing Shield.
+
+- **Simplicity First**: Shield aims to be a lightweight productivity booster, not a replacement for enterprise-grade, audited HSM or multi-user vault solutions (like HashiCorp Vault).
+
+We believe Shield is a strong candidate for enhancing your daily workflow, but we encourage transparency regarding its current "Simple & Beta" status.
+
 ## Installation
 
 ### Pre-built Binaries
