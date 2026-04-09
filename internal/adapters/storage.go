@@ -25,3 +25,14 @@ func(s *FileStorage) Load() ([]byte, error) {
 	}
 	return v, nil
 }
+
+func(s *FileStorage) VaultExists() (bool, error) {
+	_, err := os.Stat(s.vaultPath)
+    if err == nil {
+        return true, nil
+    }
+    if errors.Is(err, os.ErrNotExist) {
+        return false, nil
+    }
+    return false, err
+}

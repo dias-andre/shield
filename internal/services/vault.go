@@ -57,14 +57,14 @@ func (s *VaultService) AddSshEntry(entry domain.SSHEntry, key []byte) error {
 func (s *VaultService) DeleteSshEntry(entryName string, key []byte) error {
 	vault, err := s.GetVault(key)
 	if err != nil { return err }
-	
+
 	if entry, ok := vault.Entries[entryName]; ok {
 		delete(vault.Entries, entry.Name)
 		err := s.SaveVault(vault, key)
 		if err != nil { return err }
 		return nil
 	}
-	
+
 	return ErrSshEntryNotFound
 }
 
@@ -80,6 +80,10 @@ func (s *VaultService) SaveVault(vault domain.Vault, key []byte) error {
 	if err != nil { return err }
 
 	return s.storage.Save(encryptedVault)
+}
+
+func (s *VaultService) VaultExists() (bool, error) {
+	return s.storage.VaultExists()
 }
 
 func NewVaultService(encryptor ports.EncryptorPort, storage ports.StoragePort) VaultService {
