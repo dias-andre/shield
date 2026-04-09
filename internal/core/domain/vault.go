@@ -15,8 +15,8 @@ type SSHEntry struct {
 	User string `json:"user"`
 	AuthType AuthMethod `json:"auth_type"`
 
-	Password string `json:"password,omitempty"`
-	PrivateKey string `json:"private_key,omitempty"`
+	// Password string `json:"password,omitempty"`
+	PrivateKey []byte `json:"private_key,omitempty"`
 }
 
 type Vault struct {
@@ -26,5 +26,14 @@ type Vault struct {
 func NewVault() Vault {
 	return Vault{
 		Entries: make(map[string]SSHEntry),
+	}
+}
+
+func(v *Vault) Erase() {
+	for name, entry := range v.Entries {
+		for i := range entry.PrivateKey {
+			entry.PrivateKey[i] = 0
+		}
+		delete(v.Entries, name)
 	}
 }
