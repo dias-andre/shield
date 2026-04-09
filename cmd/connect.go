@@ -61,7 +61,7 @@ func connectSSH(entry domain.SSHEntry) error {
 	tmpPath := tmpFile.Name()
 	defer os.Remove(tmpPath)
 
-	if _, err := tmpFile.WriteString(entry.PrivateKey); err != nil {
+	if _, err := tmpFile.Write(entry.PrivateKey); err != nil {
 		return err
 	}
 

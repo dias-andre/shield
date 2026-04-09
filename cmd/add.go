@@ -9,6 +9,7 @@ import (
 
 	"github.com/briandowns/spinner"
 	"github.com/dias-andre/shield/internal/core/domain"
+	"github.com/dias-andre/shield/internal/utils"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
@@ -133,7 +134,7 @@ var addServer = &cobra.Command{
 				return fmt.Errorf("Failed to read file: %s", err.Error())
 			}
 
-			entry.PrivateKey = string(fileContent)
+			entry.PrivateKey = fileContent
 			// fmt.Print(entry.PrivateKey)
 		}
 
@@ -142,6 +143,7 @@ var addServer = &cobra.Command{
 			sp.Stop()
 			return fmt.Errorf("Failed to get master key: %s", err.Error())
 		}
+		defer utils.Clear(masterKey)
 
 		err =  vaultSystem.AddSshEntry(entry, masterKey)
 		if err != nil {
