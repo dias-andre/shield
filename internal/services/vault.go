@@ -14,6 +14,7 @@ type VaultService struct {
 }
 
 var ErrVaultFileNotExists = errors.New("Vault file not exists!")
+var ErrSshEntryNotFound = errors.New("Ssh entry not found!")
 
 func (s *VaultService) GetVault(key []byte) (domain.Vault, error) {
 	var v domain.Vault
@@ -51,6 +52,20 @@ func (s *VaultService) AddSshEntry(entry domain.SSHEntry, key []byte) error {
 	vaultEncrypted, err := s.crypto.Encrypt(jsonData, key)
 	if err != nil { return err }
 	return s.storage.Save(vaultEncrypted)
+}
+
+func (s *VaultService) DeleteSshEntry(entryName string, key []byte) error {
+	vault, err := s.GetVault(key)
+	if err != nil { return err }
+	
+	if entry, ok := vault.Entries[entryName]; ok {
+		delete(vault.Entries, entry.Name)
+		err := s.SaveVault(vault, key)
+		if err != nil { return err }
+		return nil
+	}
+	
+	return ErrSshEntryNotFound
 }
 
 func (s *VaultService) InitVault() domain.Vault {
