@@ -1,9 +1,9 @@
 BINARY_NAME=shield
-VERSION=1.0.0-beta
+VERSION=1.0.1_beta
 LDFLAGS=-ldflags="-s -w"
 
 PLATFORMS=linux darwin
-ARCHITECTURES=amd64 arm64
+ARCHITECTURES=x86_64 aarch64
 
 release:
 	@echo "Cleaning build dir..."

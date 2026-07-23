@@ -21,3 +21,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for SSH key-based authentication
 - Cross-platform binaries (Linux, macOS)
 - Architecture support: amd64, arm64
+
+## [1.0.1_beta] - 2026-07-23
+
+### Added
+
+- 'shield rm' - Remove your ssh servers
+- 'shield lock' - Close your keyring
+
+### Features
+
+- Load SSH keys using the ssh agent.
