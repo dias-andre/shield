@@ -3,7 +3,7 @@ VERSION=1.0.1_beta
 LDFLAGS=-ldflags="-s -w"
 
 PLATFORMS=linux darwin
-ARCHITECTURES=x86_64 aarch64
+ARCHITECTURES=amd64 arm64
 
 release:
 	@echo "Cleaning build dir..."
