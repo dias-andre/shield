@@ -2,3 +2,5 @@ main
 shield
 dist/
 build/
+*.pub
+*.pem
