@@ -1,8 +1,10 @@
 package cmd
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 
@@ -12,28 +14,28 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var ErrNotPrivateKey = errors.New("The Authentication is not a private key")
+var ErrNotPrivateKey = errors.New("the authentication method is not a private key")
 
 var connectCmd = &cobra.Command{
-	Use: "connect [name]",
+	Use:   "connect [name]",
 	Short: "Connect to a saved server",
-	Args: cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		masterKey, err := keysystem.GetKey()
 		if err != nil {
-			return fmt.Errorf("Failed to get master key: %s", err.Error())
+			return fmt.Errorf("failed to get master key: %s", err.Error())
 		}
-		
+
 		v, err := vaultSystem.GetVault(masterKey)
 		if err != nil {
-			return fmt.Errorf("Failed to get vault: %s", err.Error())
+			return fmt.Errorf("failed to get vault: %s", err.Error())
 		}
 		defer utils.Clear(masterKey)
 		defer v.Erase()
 
 		entry, ok := v.Entries[args[0]]
 		if !ok {
-			return fmt.Errorf("Server '%s' not found.", args[0])
+			return fmt.Errorf("server '%s' not found ", args[0])
 		}
 		fmt.Printf("Connecting to '%s'\n", entry.Name)
 		// fmt.Print(entry)
@@ -47,36 +49,49 @@ var connectCmd = &cobra.Command{
 	},
 }
 
+func addKeyToAgent(privateKey []byte) error {
+	if os.Getenv("SSH_AUTH_SOCK") == "" {
+		return fmt.Errorf("ssh-agent is not running. Please, run with eval\"$(ssh-agent -s)\"")
+	}
+
+	cmd := exec.Command("ssh-add", "-")
+	cmd.Stdin = bytes.NewReader(privateKey)
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
+	err := cmd.Run()
+	if err != nil {
+		return fmt.Errorf("error: %v, stderr: %s", err, &stderr)
+	}
+	return nil
+}
+
+func wipeAgentKeys() {
+	cmd := exec.Command("ssh-add", "-D")
+	if err := cmd.Run(); err != nil {
+		fmt.Printf("Alert: agent keys not wiped: %s\n", err.Error())
+	}
+}
 
 func connectSSH(entry domain.SSHEntry) error {
-	target := fmt.Sprintf("%s@%s", entry.User, entry.Host)
-
 	var cmd *exec.Cmd
 
 	if entry.AuthType != domain.AuthMethodKey {
 		return ErrNotPrivateKey
 	}
 
-	tmpFile, err := os.CreateTemp("", "shield-key-*")
+	host, port, err := net.SplitHostPort(entry.Host)
 	if err != nil {
-		return err
+		host = entry.Host
+		port = "22"
 	}
 
-	tmpPath := tmpFile.Name()
-	defer os.Remove(tmpPath)
-
-	if _, err := tmpFile.Write(entry.PrivateKey); err != nil {
-		return err
+	if err := addKeyToAgent(entry.PrivateKey); err != nil {
+		return fmt.Errorf("ssh-agent error: %v", err)
 	}
+	defer wipeAgentKeys()
+	target := fmt.Sprintf("%s@%s", entry.User, host)
+	cmd = exec.Command("ssh", "-p", port, target)
 
-	tmpFile.Close()
-
-	if err := os.Chmod(tmpPath, 0600); err != nil {
-		return err
-	}
-
-	cmd = exec.Command("ssh", "-i", tmpPath, target)
-	
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
