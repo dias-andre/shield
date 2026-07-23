@@ -5,6 +5,7 @@
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
+// Package cmd is the root cobra package, which manages the shield commands and options.
 package cmd
 
 import (
@@ -18,15 +19,17 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var vaultSystem services.VaultService
-var keysystem ports.KeySystemPort
+var (
+	vaultSystem services.VaultService
+	keysystem   ports.KeySystemPort
+)
 
 var rootCmd = &cobra.Command{
-	Use: "shield",
+	Use:           "shield",
 	SilenceErrors: true,
-	SilenceUsage: true,
-	Version: "v1.0.0-beta",
-	Short: "Tool for managing encrypted server keys",
+	SilenceUsage:  true,
+	Version:       "v1.0.0-beta",
+	Short:         "Tool for managing encrypted server keys",
 }
 
 func getDataPath() (string, error) {
@@ -41,8 +44,8 @@ func getDataPath() (string, error) {
 
 	appDataDir := filepath.Join(dataHome, "shield")
 
-	if err := os.MkdirAll(appDataDir, 0700); err != nil {
-		return "", fmt.Errorf("Failed to create data directory: %w", err)
+	if err := os.MkdirAll(appDataDir, 0o700); err != nil {
+		return "", fmt.Errorf("failed to create data directory: %w", err)
 	}
 
 	return filepath.Join(appDataDir, "keys.vault"), nil
@@ -54,7 +57,7 @@ func init() {
 		fmt.Println("Failed to load configuration")
 		os.Exit(1)
 	}
-	
+
 	encryptor := adapters.NewAESEncryptor()
 	repo := adapters.NewFileSystemStorage(datapath)
 	vaultSystem = services.NewVaultService(encryptor, repo)
@@ -73,4 +76,3 @@ func Execute() {
 		os.Exit(1)
 	}
 }
-
