@@ -11,18 +11,18 @@ import (
 )
 
 var lockCmd = &cobra.Command{
-	Use: "lock",
+	Use:   "lock",
 	Short: "Lock shield",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		lockable, ok := keysystem.(ports.Lockable)
 
 		if !ok {
-			return fmt.Errorf("The current keysystem adapter does not support locking")
+			return fmt.Errorf("the current keysystem adapter does not support locking")
 		}
 
 		err := lockable.Lock()
 		if err != nil {
-			return fmt.Errorf("Failed to lock shield: %w", err)
+			return fmt.Errorf("failed to lock shield: %w", err)
 		}
 
 		color.Green("🔒 Shield locked successfully!")

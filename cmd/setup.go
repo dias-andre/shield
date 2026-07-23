@@ -33,14 +33,14 @@ var setupCmd = &cobra.Command{
 			if _, err := rand.Read(key); err != nil {
 				sp.Suffix = "Stopped!"
 				sp.Stop()
-				return fmt.Errorf("Failed to generate random key: %s", err.Error())
+				return fmt.Errorf("failed to generate random key: %s", err.Error())
 			}
 
 			err := keysystem.SaveKey(key)
 			if err != nil {
 				sp.Suffix = "Stopped!"
 				sp.Stop()
-				return fmt.Errorf("Failed to save key: %s", err.Error())
+				return fmt.Errorf("failed to save key: %s", err.Error())
 			}
 		}
 
@@ -51,7 +51,7 @@ var setupCmd = &cobra.Command{
 			if err := vaultSystem.SaveVault(vault, key); err != nil {
 				sp.Suffix = "Stopped!"
 				sp.Stop()
-				return fmt.Errorf("Failed to save file: %s", err.Error())
+				return fmt.Errorf("failed to save file: %s", err.Error())
 			}
 			sp.Stop()
 			color.Green("Vault created!")
@@ -61,8 +61,8 @@ var setupCmd = &cobra.Command{
 			color.Yellow("The vault file already exists!")
 			return nil
 		}
-		
+
 		sp.Stop()
-		return fmt.Errorf("Failed to check vault health: %w", err)
+		return fmt.Errorf("failed to check vault health: %w", err)
 	},
 }

@@ -47,7 +47,7 @@ var addServer = &cobra.Command{
 			}
 			err := survey.AskOne(promptName, &name)
 			if err != nil {
-				return fmt.Errorf("Operation failed: %s", err.Error())
+				return fmt.Errorf("operation failed: %s", err.Error())
 			}
 		}
 
@@ -57,7 +57,7 @@ var addServer = &cobra.Command{
 			}
 			err := survey.AskOne(promptUser, &user)
 			if err != nil {
-				return fmt.Errorf("Operation failed: %s", err.Error())
+				return fmt.Errorf("operation failed: %s", err.Error())
 			}
 		}
 
@@ -68,7 +68,7 @@ var addServer = &cobra.Command{
 			}
 			err := survey.AskOne(promptHost, &host)
 			if err != nil {
-				return fmt.Errorf("Operation failed: %s", err.Error())
+				return fmt.Errorf("operation failed: %s", err.Error())
 			}
 		}
 
@@ -87,23 +87,22 @@ var addServer = &cobra.Command{
 
 			err := survey.AskOne(promptAuth, &selectedAuth)
 			if err != nil {
-				return fmt.Errorf("Operation failed: %s", err.Error())
+				return fmt.Errorf("operation failed: %s", err.Error())
 			}
-	
-			if(selectedAuth == string(domain.AuthMethodKey)) {
+
+			if selectedAuth == string(domain.AuthMethodKey) {
 				err := survey.AskOne(&survey.Input{
 					Message: "Path to the private key (.pem or id_rsa):",
 					Help:    "Example: ~/.ssh/id_rsa or /path/to/your/key/ssh.pem",
 				}, &auth)
-				
 				if err != nil {
-					return fmt.Errorf("Operation failed: %s", err.Error())
+					return fmt.Errorf("operation failed: %s", err.Error())
 				}
 				authMethod = selectedAuth
 
 			} else {
 				authMethod = string(domain.NoneAuthMethod)
-			}	
+			}
 		}
 
 		sp := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
@@ -118,20 +117,20 @@ var addServer = &cobra.Command{
 			AuthType: domain.AuthMethod(authMethod),
 		}
 
-		if (entry.AuthType == domain.AuthMethodKey) {
+		if entry.AuthType == domain.AuthMethodKey {
 			// fmt.Println(auth)
 			expandedPath, err := expandPath(auth)
 			if err != nil {
-				return fmt.Errorf("Operation failed: %s", err.Error())
+				return fmt.Errorf("operation failed: %s", err.Error())
 			}
 			err = fileExistsValidator(expandedPath)
 			if err != nil {
-				return fmt.Errorf("Failed to read file: %s", err.Error())
+				return fmt.Errorf("failed to read file: %s", err.Error())
 			}
 			fileContent, err := os.ReadFile(expandedPath)
 			if err != nil {
 				sp.Stop()
-				return fmt.Errorf("Failed to read file: %s", err.Error())
+				return fmt.Errorf("failed to read file: %s", err.Error())
 			}
 
 			entry.PrivateKey = fileContent
@@ -141,14 +140,14 @@ var addServer = &cobra.Command{
 		masterKey, err := keysystem.GetKey()
 		if err != nil {
 			sp.Stop()
-			return fmt.Errorf("Failed to get master key: %s", err.Error())
+			return fmt.Errorf("failed to get master key: %s", err.Error())
 		}
 		defer utils.Clear(masterKey)
 
-		err =  vaultSystem.AddSshEntry(entry, masterKey)
+		err = vaultSystem.AddSshEntry(entry, masterKey)
 		if err != nil {
 			sp.Stop()
-			return fmt.Errorf("Failed to save credentials: %s", err.Error())
+			return fmt.Errorf("failed to save credentials: %s", err.Error())
 		}
 
 		sp.FinalMSG = "SSH Credentials saved!\n"
@@ -160,16 +159,16 @@ var addServer = &cobra.Command{
 func fileExistsValidator(path string) error {
 	fullPath, err := expandPath(path)
 	if err != nil {
-		return fmt.Errorf("Failed to Resolve User path")
+		return fmt.Errorf("failed to Resolve User path")
 	}
 
 	info, err := os.Stat(fullPath)
 	if os.IsNotExist(err) {
-		return fmt.Errorf("File not found")
+		return fmt.Errorf("file not found")
 	}
 
 	if info.IsDir() {
-		return fmt.Errorf("The path is a directory")
+		return fmt.Errorf("the path is a directory")
 	}
 	return nil
 }

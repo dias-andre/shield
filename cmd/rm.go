@@ -12,26 +12,26 @@ import (
 var forceRm bool
 
 var rmCmd = &cobra.Command{
-	Use: "rm [server name]",
+	Use:   "rm [server name]",
 	Short: "Remove server",
-	Args: cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		masterKey, err := keysystem.GetKey()
 		if err != nil {
-			return fmt.Errorf("Failed to get key: %w", err)
+			return fmt.Errorf("failed to get key: %w", err)
 		}
 		defer utils.Clear(masterKey)
-		
+
 		vault, err := vaultSystem.GetVault(masterKey)
 		if err != nil {
-			return fmt.Errorf("Failed to get vault: %w", err)
+			return fmt.Errorf("failed to get vault: %w", err)
 		}
 		defer vault.Erase()
-		
+
 		if _, ok := vault.Entries[args[0]]; !ok {
-			return fmt.Errorf("Server '%s' not found!", args[0])
+			return fmt.Errorf("server '%s' not found", args[0])
 		}
-		
+
 		if !forceRm {
 			var confirm bool
 			prompt := &survey.Confirm{
@@ -39,22 +39,24 @@ var rmCmd = &cobra.Command{
 				Default: false,
 			}
 			err := survey.AskOne(prompt, &confirm)
-			if err != nil { return fmt.Errorf("Operation failed: %w", err)}
-			
+			if err != nil {
+				return fmt.Errorf("operation failed: %w", err)
+			}
+
 			if !confirm {
 				color.Yellow("Operation cancelled.")
 				return nil
 			}
 		}
-		
+
 		err = vaultSystem.DeleteSshEntry(args[0], masterKey)
 		if err != nil {
-			return fmt.Errorf("Failed to delete entry: %w", err)
+			return fmt.Errorf("failed to delete entry: %w", err)
 		}
-		
+
 		color.Green("Server '%s' removed successfully!", args[0])
 		return nil
-		
+
 		// if server, ok := vault.Entries[args[0]]; ok {
 		// 	var response string
 		// 	prompt := &survey.Select{
@@ -66,15 +68,15 @@ var rmCmd = &cobra.Command{
 		// 	if err != nil {
 		// 		return fmt.Errorf("Operation failed: %w", err)
 		// 	}
-			
+
 		// 	if response != "yes" {
 		// 		color.Red("Operation cancelled!")
 		// 		return nil
 		// 	}
-			
+
 		// 	err = vaultSystem.DeleteSshEntry(args[0], masterKey)
 		// 	if err != nil { return err }
-			
+
 		// 	color.Green("Server removed!")
 		// 	return nil
 		// }
