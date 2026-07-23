@@ -1,8 +1,8 @@
 # Maintainer: André Dias <diaso.andre@outlook.com>
 
 pkgname=shield-cli
-pkgver=1.0.1_beta
-pkgrel=2
+pkgver=0.1.0
+pkgrel=1
 pkgdesc="Secure SSH credential management with Zero Plaintext Files"
 arch=('x86_64' 'aarch64')
 url="https://github.com/dias-andre/shield"

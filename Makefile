@@ -1,5 +1,5 @@
 BINARY_NAME=shield
-VERSION=1.0.1_beta
+VERSION=0.1.0
 LDFLAGS=-ldflags="-s -w"
 
 PLATFORMS=linux darwin

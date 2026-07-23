@@ -46,15 +46,15 @@ Download the latest release from the [Releases](https://github.com/dias-andre/sh
 
 | Platform | Architecture | File |
 |----------|--------------|------|
-| Linux    | x86_64       | `shield_1.0.1_beta_linux_amd64.tar.gz` |
-| Linux    | ARM64        | `shield_1.0.1_beta_linux_arm64.tar.gz` |
-| macOS    | x86_64       | `shield_1.0.1_beta_darwin_amd64.tar.gz` |
-| macOS    | ARM64        | `shield_1.0.1_beta_darwin_arm64.tar.gz` |
+| Linux    | x86_64       | `shield_0.1.0_linux_amd64.tar.gz` |
+| Linux    | ARM64        | `shield_0.1.0_linux_arm64.tar.gz` |
+| macOS    | x86_64       | `shield_0.1.0_darwin_amd64.tar.gz` |
+| macOS    | ARM64        | `shield_0.1.0_darwin_arm64.tar.gz` |
 
 Extract and install:
 
 ```bash
-tar -xzf shield_1.0.1_beta*.tar.gz
+tar -xzf shield_0.1.0_*.tar.gz
 mv shield ~/.local/bin/
 ```
 
@@ -99,10 +99,10 @@ shield connect aws-prod
 
 Shield is actively evolving. Here is what is planned for the future:
 
-* **SCP Support:** Securely copy files to and from your servers using the CLI.
-
 * **Export/Import Tools:** Safely export your vault data and keys for backups or migrate them to another
 machine.
+
+* **SCP Support:** Securely copy files to and from your servers using the CLI.
 
 * **Ansible Integration:** Automatically generate dynamic Ansible inventories from your Shield vault.
 
