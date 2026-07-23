@@ -10,7 +10,7 @@ license=("GPL3")
 depends=('glibc')
 makedepends=('go' 'git')
 source=("${pkgname}-${pkgver}.tar.gz::${url}/archive/refs/tags/${pkgver}.tar.gz")
-sha256sums=('ad19f0f12af61e70e08b64940fbf964c2d3b9933bbed4ab616b8ca717f48001a')
+sha256sums=('9c9d5a532caf5213af73ba9b27400233b7a3faf918e0e8597fe3dd2d0d44cd4f')
 
 build() {
   cd "shield-${pkgver}"
