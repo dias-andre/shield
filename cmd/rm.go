@@ -49,7 +49,7 @@ var rmCmd = &cobra.Command{
 			}
 		}
 
-		err = vaultSystem.DeleteSshEntry(args[0], masterKey)
+		err = vaultSystem.DeleteSSHEntry(args[0], masterKey)
 		if err != nil {
 			return fmt.Errorf("failed to delete entry: %w", err)
 		}

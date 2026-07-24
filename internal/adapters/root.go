@@ -5,22 +5,23 @@
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
+// Package adapters is the core of shield adapters
 package adapters
 
-import "github.com/dias-andre/shield/internal/core/ports"
+import "github.com/dias-andre/shield/internal/core"
 
 const (
 	shieldServiceName = "shield-cli"
-	shieldKeyName = "master-key"
+	shieldKeyName     = "master-key"
 )
 
-func NewFileSystemStorage(path string) ports.StoragePort {
+func NewFileSystemStorage(path string) core.StoragePort {
 	var storage FileStorage
 	storage.vaultPath = path
 	return &storage
 }
 
-func NewAESEncryptor() ports.EncryptorPort {
+func NewAESEncryptor() core.EncryptorPort {
 	var encryptor AES_Encrypter
 	return &encryptor
 }

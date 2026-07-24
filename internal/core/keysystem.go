@@ -1,4 +1,4 @@
-package ports
+package core
 
 type KeySystemPort interface {
 	GetKey() ([]byte, error)

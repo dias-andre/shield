@@ -5,7 +5,7 @@
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// Package cmd is the root cobra package, which manages the shield commands and options.
+// Package cmd is the root cobra package, which manages the shield commands and flags.
 package cmd
 
 import (
@@ -14,14 +14,14 @@ import (
 	"path/filepath"
 
 	"github.com/dias-andre/shield/internal/adapters"
-	"github.com/dias-andre/shield/internal/core/ports"
+	"github.com/dias-andre/shield/internal/core"
 	"github.com/dias-andre/shield/internal/services"
 	"github.com/spf13/cobra"
 )
 
 var (
 	vaultSystem services.VaultService
-	keysystem   ports.KeySystemPort
+	keysystem   core.KeySystemPort
 )
 
 var rootCmd = &cobra.Command{
@@ -29,7 +29,7 @@ var rootCmd = &cobra.Command{
 	SilenceErrors: true,
 	SilenceUsage:  true,
 	Version:       "0.1.0",
-	Short:         "Tool for managing encrypted server keys",
+	Short:         "Tool for managing encrypted SSH keys",
 }
 
 func getDataPath() (string, error) {

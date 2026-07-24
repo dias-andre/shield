@@ -1,4 +1,4 @@
-package ports
+package core
 
 type EncryptorPort interface {
 	Encrypt(vault []byte, key []byte) ([]byte, error)

@@ -48,7 +48,7 @@ var setupCmd = &cobra.Command{
 		if !vaultExists && err == nil {
 			vault := vaultSystem.InitVault()
 			defer vault.Erase()
-			if err := vaultSystem.SaveVault(vault, key); err != nil {
+			if err := vaultSystem.SaveVault(&vault, key); err != nil {
 				sp.Suffix = "Stopped!"
 				sp.Stop()
 				return fmt.Errorf("failed to save file: %s", err.Error())

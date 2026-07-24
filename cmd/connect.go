@@ -8,7 +8,7 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/dias-andre/shield/internal/core/domain"
+	"github.com/dias-andre/shield/internal/core"
 	"github.com/dias-andre/shield/internal/utils"
 
 	"github.com/spf13/cobra"
@@ -72,10 +72,10 @@ func wipeAgentKeys() {
 	}
 }
 
-func connectSSH(entry domain.SSHEntry) error {
+func connectSSH(entry core.SSHEntry) error {
 	var cmd *exec.Cmd
 
-	if entry.AuthType != domain.AuthMethodKey {
+	if entry.AuthType != core.AuthMethodKey {
 		return ErrNotPrivateKey
 	}
 
