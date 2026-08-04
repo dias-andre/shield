@@ -11,11 +11,11 @@ package cmd
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/dias-andre/shield/internal/adapters"
 	"github.com/dias-andre/shield/internal/core"
 	"github.com/dias-andre/shield/internal/services"
+	"github.com/dias-andre/shield/internal/utils"
 	"github.com/spf13/cobra"
 )
 
@@ -32,27 +32,8 @@ var rootCmd = &cobra.Command{
 	Short:         "Tool for managing encrypted SSH keys",
 }
 
-func getDataPath() (string, error) {
-	dataHome := os.Getenv("XDG_DATA_HOME")
-	if dataHome == "" {
-		home, err := os.UserHomeDir()
-		if err != nil {
-			return "", err
-		}
-		dataHome = filepath.Join(home, ".local", "share")
-	}
-
-	appDataDir := filepath.Join(dataHome, "shield")
-
-	if err := os.MkdirAll(appDataDir, 0o700); err != nil {
-		return "", fmt.Errorf("failed to create data directory: %w", err)
-	}
-
-	return filepath.Join(appDataDir, "keys.vault"), nil
-}
-
 func init() {
-	datapath, err := getDataPath()
+	datapath, err := utils.GetDataPath()
 	if err != nil {
 		fmt.Println("Failed to load configuration")
 		os.Exit(1)
