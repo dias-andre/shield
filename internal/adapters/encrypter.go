@@ -8,9 +8,9 @@ import (
 	"io"
 )
 
-type AES_Encrypter struct{}
+type AESEncrypter struct{}
 
-func (s *AES_Encrypter) Encrypt(jsonData []byte, key []byte) ([]byte, error) {
+func (s *AESEncrypter) Encrypt(jsonData []byte, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -30,7 +30,7 @@ func (s *AES_Encrypter) Encrypt(jsonData []byte, key []byte) ([]byte, error) {
 	return encryptedData, nil
 }
 
-func (s *AES_Encrypter) Decrypt(encryptedData []byte, key []byte) ([]byte, error) {
+func (s *AESEncrypter) Decrypt(encryptedData []byte, key []byte) ([]byte, error) {
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return nil, err
@@ -57,6 +57,6 @@ func (s *AES_Encrypter) Decrypt(encryptedData []byte, key []byte) ([]byte, error
 	return plaintext, nil
 }
 
-func (s *AES_Encrypter) GetMinimumVaultSize() int64 {
+func (s *AESEncrypter) GetMinimumVaultSize() int64 {
 	return 35
 }

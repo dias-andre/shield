@@ -22,7 +22,7 @@ func NewFileSystemStorage(path string) core.StoragePort {
 }
 
 func NewAESEncryptor() core.EncryptorPort {
-	var encryptor AES_Encrypter
+	var encryptor AESEncrypter
 	return &encryptor
 }
 
