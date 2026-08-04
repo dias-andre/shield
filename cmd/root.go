@@ -49,6 +49,7 @@ func init() {
 	rootCmd.AddCommand(lsCmd)
 	rootCmd.AddCommand(connectCmd)
 	rootCmd.AddCommand(rmCmd)
+	rootCmd.AddCommand(showKeyCmd)
 }
 
 func Execute() {
