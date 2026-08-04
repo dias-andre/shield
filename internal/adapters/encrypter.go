@@ -56,3 +56,7 @@ func (s *AES_Encrypter) Decrypt(encryptedData []byte, key []byte) ([]byte, error
 
 	return plaintext, nil
 }
+
+func (s *AES_Encrypter) GetMinimumVaultSize() int64 {
+	return 35
+}

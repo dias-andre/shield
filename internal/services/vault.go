@@ -186,3 +186,14 @@ func NewVaultService(encryptor core.EncryptorPort, storage core.StoragePort) Vau
 		crypto:  encryptor,
 	}
 }
+
+func (s *VaultService) CheckVaultHealth() (bool, error) {
+	vaultValidation := s.storage.ValidateVault()
+	if vaultValidation != nil {
+		return false, vaultValidation
+	}
+	if vaultSize := s.storage.GetVaultSize(); vaultSize <= s.crypto.GetMinimumVaultSize() {
+		return false, fmt.Errorf("invalid vault size")
+	}
+	return true, nil
+}

@@ -89,3 +89,43 @@ func (s *FileStorage) SaveRawVault(vault *core.RawVault) error {
 
 	return nil
 }
+
+func (s *FileStorage) ValidateVault() error {
+	info, err := os.Stat(s.vaultPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return core.ErrVaultFileNotExists
+		}
+	}
+	if info.Size() <= 19 {
+		return core.ErrVaultFileCorrupted
+	}
+
+	if info.Mode().Type().Perm() != 0o600 {
+		return core.ErrInvalidVaultPermissions
+	}
+
+	file, err := os.Open(s.vaultPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	magicBytes := make([]byte, 4)
+	if _, err := file.Read(magicBytes); err != nil {
+		return err
+	}
+	if string(magicBytes) != "SHLD" {
+		return core.ErrInvalidMagic
+	}
+
+	return nil
+}
+
+func (s *FileStorage) GetVaultSize() int64 {
+	info, err := os.Stat(s.vaultPath)
+	if err != nil {
+		return 0
+	}
+	return info.Size()
+}

@@ -50,6 +50,7 @@ func init() {
 	rootCmd.AddCommand(connectCmd)
 	rootCmd.AddCommand(rmCmd)
 	rootCmd.AddCommand(showKeyCmd)
+	rootCmd.AddCommand(healthCheckCmd)
 }
 
 func Execute() {
