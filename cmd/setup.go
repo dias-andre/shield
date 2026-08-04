@@ -16,7 +16,7 @@ var setupCmd = &cobra.Command{
 	Use:   "setup",
 	Short: "Initialize shield",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		color.Green("Thank you for choose shield!\n\n")
+		color.Green("Thank you for choosing shield!\n\n")
 		sp := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
 
 		sp.Suffix = "Generating Master Key and Creating Vault\n"
