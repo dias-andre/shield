@@ -8,12 +8,12 @@ import (
 
 type KeyringSystem struct {
 	serviceName string
-	keyName string
+	keyName     string
 }
 
 func (s *KeyringSystem) SaveKey(key []byte) error {
 	stringKey := base64.StdEncoding.EncodeToString(key)
-	
+
 	return keyring.Set(s.serviceName, s.keyName, stringKey)
 }
 

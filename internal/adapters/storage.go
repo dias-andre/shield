@@ -115,7 +115,7 @@ func (s *FileStorage) ValidateVault() error {
 	if _, err := file.Read(magicBytes); err != nil {
 		return err
 	}
-	if string(magicBytes) != "SHLD" {
+	if !bytes.Equal(magicBytes, MagicBytes) {
 		return core.ErrInvalidMagic
 	}
 

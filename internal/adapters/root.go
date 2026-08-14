@@ -25,10 +25,3 @@ func NewAESEncryptor() core.EncryptorPort {
 	var encryptor AESEncrypter
 	return &encryptor
 }
-
-// func NewKeyringSystem() ports.KeySystemPort {
-// 	return &KeyringSystem{
-// 		serviceName: "shield-cli",
-// 		keyName: "master-key",
-// 	}
-// }

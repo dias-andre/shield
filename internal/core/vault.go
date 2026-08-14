@@ -1,4 +1,4 @@
-// Package core which own important shield ports
+// Package core defines the domain model and ports used by shield.
 package core
 
 type AuthMethod string
@@ -10,14 +10,12 @@ const (
 )
 
 type SSHEntry struct {
-	Name     string     `json:"name"`
-	Host     string     `json:"host"`
-	Port     int        `json:"port"`
-	User     string     `json:"user"`
-	AuthType AuthMethod `json:"auth_type"`
-
-	// Password string `json:"password,omitempty"`
-	PrivateKey []byte `json:"private_key,omitempty"`
+	Name       string     `json:"name"`
+	Host       string     `json:"host"`
+	Port       int        `json:"port"`
+	User       string     `json:"user"`
+	AuthType   AuthMethod `json:"auth_type"`
+	PrivateKey []byte     `json:"private_key,omitempty"`
 }
 
 type Vault struct {

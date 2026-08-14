@@ -3,7 +3,7 @@ package core
 import "errors"
 
 var (
-	ErrVaultFileNotExists      = errors.New("vault file not exists")
+	ErrVaultFileNotExists      = errors.New("vault file does not exist")
 	ErrVaultFileCorrupted      = errors.New("vault file corrupted or empty")
 	ErrInvalidMagic            = errors.New("invalid vault magic")
 	ErrInvalidVaultPermissions = errors.New("invalid vault permissions")

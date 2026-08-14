@@ -4,6 +4,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"io"
 )
@@ -43,7 +44,7 @@ func (s *AESEncrypter) Decrypt(encryptedData []byte, key []byte) ([]byte, error)
 
 	nonceSize := aesGCM.NonceSize()
 	if len(encryptedData) < nonceSize {
-		return nil, fmt.Errorf("Vault file is broken")
+		return nil, errors.New("vault file is broken")
 	}
 
 	nonce := encryptedData[:nonceSize]
@@ -51,7 +52,7 @@ func (s *AESEncrypter) Decrypt(encryptedData []byte, key []byte) ([]byte, error)
 
 	plaintext, err := aesGCM.Open(nil, nonce, cipherText, nil)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to decode vault (master key incorrect or file broken): %w", err)
+		return nil, fmt.Errorf("failed to decrypt vault: %w (master key incorrect or file broken)", err)
 	}
 
 	return plaintext, nil
