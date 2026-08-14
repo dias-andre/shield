@@ -1,9 +1,10 @@
-package cmd
+package cli
 
 import (
 	"bytes"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"os"
 	"os/exec"
@@ -23,44 +24,39 @@ var connectCmd = &cobra.Command{
 	RunE: func(cmd *cobra.Command, args []string) error {
 		masterKey, err := keysystem.GetKey()
 		if err != nil {
-			return fmt.Errorf("failed to get master key: %s", err.Error())
+			return fmt.Errorf("failed to get master key: %w", err)
 		}
+		defer utils.Clear(masterKey)
 
 		v, err := vaultSystem.GetVault(masterKey)
 		if err != nil {
-			return fmt.Errorf("failed to get vault: %s", err.Error())
+			return fmt.Errorf("failed to get vault: %w", err)
 		}
-		defer utils.Clear(masterKey)
 		defer v.Erase()
 
 		entry, ok := v.Entries[args[0]]
 		if !ok {
-			return fmt.Errorf("server '%s' not found ", args[0])
+			return fmt.Errorf("server '%s' not found", args[0])
 		}
 		fmt.Printf("Connecting to '%s'\n", entry.Name)
-		// fmt.Print(entry)
-		err = connectSSH(entry)
-		if err != nil {
-			fmt.Println(err.Error())
+		if err := connectSSH(entry); err != nil {
+			return fmt.Errorf("failed to connect to '%s': %w", entry.Name, err)
 		}
-		// fmt.Print("\033[2A\033[J")
-		fmt.Println("Shield closed successfully!")
 		return nil
 	},
 }
 
 func addKeyToAgent(privateKey []byte) error {
 	if os.Getenv("SSH_AUTH_SOCK") == "" {
-		return fmt.Errorf("ssh-agent is not running. Please, run with eval\"$(ssh-agent -s)\"")
+		return errors.New("ssh-agent is not running: run `eval \"$(ssh-agent -s)\"` first")
 	}
 
 	cmd := exec.Command("ssh-add", "-")
 	cmd.Stdin = bytes.NewReader(privateKey)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
-	err := cmd.Run()
-	if err != nil {
-		return fmt.Errorf("error: %v, stderr: %s", err, &stderr)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("ssh-add failed: %v: %s", err, stderr.String())
 	}
 	return nil
 }
@@ -68,7 +64,7 @@ func addKeyToAgent(privateKey []byte) error {
 func wipeAgentKeys() {
 	cmd := exec.Command("ssh-add", "-D")
 	if err := cmd.Run(); err != nil {
-		fmt.Printf("Alert: agent keys not wiped: %s\n", err.Error())
+		slog.Warn("failed to wipe keys from ssh-agent", "error", err)
 	}
 }
 
@@ -86,7 +82,7 @@ func connectSSH(entry core.SSHEntry) error {
 	}
 
 	if err := addKeyToAgent(entry.PrivateKey); err != nil {
-		return fmt.Errorf("ssh-agent error: %v", err)
+		return fmt.Errorf("ssh-agent error: %w", err)
 	}
 	defer wipeAgentKeys()
 	target := fmt.Sprintf("%s@%s", entry.User, host)
@@ -96,7 +92,9 @@ func connectSSH(entry core.SSHEntry) error {
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	// fmt.Printf("Connecting to server '%s'...\n", entry.Name)
-
 	return cmd.Run()
+}
+
+func init() {
+	rootCmd.AddCommand(connectCmd)
 }

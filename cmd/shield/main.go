@@ -7,8 +7,8 @@
 
 package main
 
-import "github.com/dias-andre/shield/cmd"
+import "github.com/dias-andre/shield/internal/cli"
 
 func main() {
-	cmd.Execute()
+	cli.Execute()
 }

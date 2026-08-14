@@ -5,11 +5,12 @@
 // the Free Software Foundation, either version 3 of the License, or
 // (at your option) any later version.
 
-// Package cmd is the root cobra package, which manages the shield commands and flags.
-package cmd
+// Package cli implements the shield CLI commands and flags.
+package cli
 
 import (
 	"fmt"
+	"net/rpc"
 	"os"
 
 	"github.com/dias-andre/shield/internal/adapters"
@@ -20,8 +21,9 @@ import (
 )
 
 var (
-	vaultSystem services.VaultService
-	keysystem   core.KeySystemPort
+	vaultSystem  services.VaultService
+	keysystem    core.KeySystemPort
+	globalClient *rpc.Client
 )
 
 var rootCmd = &cobra.Command{
@@ -38,24 +40,37 @@ func init() {
 		fmt.Println("Failed to load configuration")
 		os.Exit(1)
 	}
-
 	encryptor := adapters.NewAESEncryptor()
 	repo := adapters.NewFileSystemStorage(datapath)
 	vaultSystem = services.NewVaultService(encryptor, repo)
-	keysystem = adapters.NewKeyringSystem()
+	keysystem, err = adapters.NewKeyringSystem()
+	if err != nil {
+		fmt.Printf("Failed to initialize keyring system: %v\n", err)
+		os.Exit(1)
+	}
+}
 
-	rootCmd.AddCommand(setupCmd)
-	rootCmd.AddCommand(addCmd)
-	rootCmd.AddCommand(lsCmd)
-	rootCmd.AddCommand(connectCmd)
-	rootCmd.AddCommand(rmCmd)
-	rootCmd.AddCommand(showKeyCmd)
-	rootCmd.AddCommand(healthCheckCmd)
+func connectRPC() error {
+	if globalClient != nil {
+		return nil
+	}
+	client, err := rpc.Dial("unix", utils.SocketPath)
+	if err != nil {
+		return fmt.Errorf("failed to connect to shield daemon: %w (is shieldd running?)", err)
+	}
+	globalClient = client
+	return nil
 }
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
+		fmt.Printf("Error: %v\n", err)
+		if globalClient != nil {
+			_ = globalClient.Close()
+		}
 		os.Exit(1)
+	}
+	if globalClient != nil {
+		_ = globalClient.Close()
 	}
 }

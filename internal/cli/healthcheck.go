@@ -1,10 +1,9 @@
-package cmd
+package cli
 
 import (
 	"errors"
 	"fmt"
 
-	"github.com/AlecAivazis/survey/v2"
 	"github.com/dias-andre/shield/internal/core"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
@@ -33,7 +32,7 @@ var healthCheckCmd = &cobra.Command{
 		}
 
 		if sizeCheckPass {
-			color.Green("✓ Minimum size check (19 bytes)\n")
+			color.Green("✓ Minimum size check\n")
 		} else {
 			color.Red("✗ Minimum size check\n")
 		}
@@ -53,15 +52,12 @@ var healthCheckCmd = &cobra.Command{
 
 			fmt.Println("\nAction required:")
 			fmt.Println("The vault needs 0600 permissions.")
-			fixNow := false
-			prompt := &survey.Confirm{
-				Message: "Do you want Shield to fix the permissions for you right now?",
-			}
-			survey.AskOne(prompt, &fixNow)
-			if fixNow {
-			}
 		}
 
 		return nil
 	},
+}
+
+func init() {
+	rootCmd.AddCommand(healthCheckCmd)
 }

@@ -1,6 +1,6 @@
 main
-shield
 dist/
 build/
+target/
 *.pub
 *.pem

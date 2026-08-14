@@ -65,8 +65,15 @@ Make sure you have [Go](https://go.dev/) installed:
 ```bash
 git clone https://github.com/dias-andre/shield.git
 cd shield
-go build -o shield main.go
-mv shield ~/.local/bin/
+go build -o shield cmd/shield/main.go
+go build -o shieldd cmd/shieldd/main.go
+mv shield shieldd ~/.local/bin/
+```
+
+Shield is split into two binaries: the `shield` CLI and the `shieldd` daemon. The daemon holds the vault in memory and exposes it over a local Unix socket, so start it before using commands that need it:
+
+```bash
+shieldd
 ```
 
 ## Quick Start

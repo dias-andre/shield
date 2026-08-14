@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 )
 
+const SocketPath = "/tmp/shield.sock"
+
 func GetDataPath() (string, error) {
 	dataHome := os.Getenv("XDG_DATA_HOME")
 	if dataHome == "" {

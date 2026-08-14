@@ -1,4 +1,4 @@
-package cmd
+package cli
 
 import (
 	"fmt"
@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/briandowns/spinner"
+	"github.com/dias-andre/shield/internal/api"
 	"github.com/dias-andre/shield/internal/core"
-	"github.com/dias-andre/shield/internal/utils"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
@@ -25,6 +25,10 @@ var addServer = &cobra.Command{
 	Short: "Add a new SSH server to Vault",
 	// Args: cobra.ExactArgs(3),
 	RunE: func(cmd *cobra.Command, args []string) error {
+		rpcErr := connectRPC()
+		if rpcErr != nil {
+			return rpcErr
+		}
 		var name, user, host, auth, authMethod string
 
 		if len(args) > 0 {
@@ -47,7 +51,7 @@ var addServer = &cobra.Command{
 			}
 			err := survey.AskOne(promptName, &name)
 			if err != nil {
-				return fmt.Errorf("operation failed: %s", err.Error())
+				return fmt.Errorf("failed to read prompt: %w", err)
 			}
 		}
 
@@ -57,7 +61,7 @@ var addServer = &cobra.Command{
 			}
 			err := survey.AskOne(promptUser, &user)
 			if err != nil {
-				return fmt.Errorf("operation failed: %s", err.Error())
+				return fmt.Errorf("failed to read prompt: %w", err)
 			}
 		}
 
@@ -68,7 +72,7 @@ var addServer = &cobra.Command{
 			}
 			err := survey.AskOne(promptHost, &host)
 			if err != nil {
-				return fmt.Errorf("operation failed: %s", err.Error())
+				return fmt.Errorf("failed to read prompt: %w", err)
 			}
 		}
 
@@ -87,7 +91,7 @@ var addServer = &cobra.Command{
 
 			err := survey.AskOne(promptAuth, &selectedAuth)
 			if err != nil {
-				return fmt.Errorf("operation failed: %s", err.Error())
+				return fmt.Errorf("failed to read prompt: %w", err)
 			}
 
 			if selectedAuth == string(core.AuthMethodKey) {
@@ -96,7 +100,7 @@ var addServer = &cobra.Command{
 					Help:    "Example: ~/.ssh/id_rsa or /path/to/your/key/ssh.pem",
 				}, &auth)
 				if err != nil {
-					return fmt.Errorf("operation failed: %s", err.Error())
+					return fmt.Errorf("failed to read prompt: %w", err)
 				}
 				authMethod = selectedAuth
 
@@ -106,60 +110,45 @@ var addServer = &cobra.Command{
 		}
 
 		sp := spinner.New(spinner.CharSets[14], 100*time.Millisecond)
-		sp.Suffix = "Storing your SSH Credentials\n"
+		sp.Suffix = "Storing your SSH credentials\n"
 		sp.Start()
+		defer sp.Stop()
 
-		entry := core.SSHEntry{
+		request := api.CreateSSHEntryRequest{
 			Name:     name,
 			User:     user,
-			Port:     22,
 			Host:     host,
 			AuthType: core.AuthMethod(authMethod),
 		}
+		reply := api.CreateSSHEntryReply{}
 
-		if entry.AuthType == core.AuthMethodKey {
-			// fmt.Println(auth)
-			expandedPath, err := expandPath(auth)
+		if request.AuthType == core.AuthMethodKey {
+			expandedPath, err := resolvePath(auth)
 			if err != nil {
-				return fmt.Errorf("operation failed: %s", err.Error())
+				return fmt.Errorf("failed to resolve key path: %w", err)
 			}
-			err = fileExistsValidator(expandedPath)
-			if err != nil {
-				return fmt.Errorf("failed to read file: %s", err.Error())
+			if err := fileExistsValidator(expandedPath); err != nil {
+				return fmt.Errorf("failed to read file: %w", err)
 			}
-			fileContent, err := os.ReadFile(expandedPath)
-			if err != nil {
-				sp.Stop()
-				return fmt.Errorf("failed to read file: %s", err.Error())
-			}
-
-			entry.PrivateKey = fileContent
-			// fmt.Print(entry.PrivateKey)
+			request.KeyLocation = expandedPath
 		}
-
-		masterKey, err := keysystem.GetKey()
-		if err != nil {
-			sp.Stop()
-			return fmt.Errorf("failed to get master key: %s", err.Error())
+		if err := globalClient.Call("VaultServer.CreateEntry", &request, &reply); err != nil {
+			sp.FinalMSG = "Operation failed!\n"
+			return fmt.Errorf("failed to call daemon: %w", err)
 		}
-		defer utils.Clear(masterKey)
-
-		err = vaultSystem.AddSSHEntry(entry, masterKey)
-		if err != nil {
-			sp.Stop()
-			return fmt.Errorf("failed to save credentials: %s", err.Error())
+		if !reply.Success {
+			sp.FinalMSG = "Operation failed!\n"
+			return fmt.Errorf("failed to save SSH entry: %s", reply.ErrorMsg)
 		}
-
-		sp.FinalMSG = "SSH Credentials saved!\n"
-		sp.Stop()
+		sp.FinalMSG = "SSH credentials saved!\n"
 		return nil
 	},
 }
 
 func fileExistsValidator(path string) error {
-	fullPath, err := expandPath(path)
+	fullPath, err := resolvePath(path)
 	if err != nil {
-		return fmt.Errorf("failed to Resolve User path")
+		return fmt.Errorf("failed to resolve user path: %w", err)
 	}
 
 	info, err := os.Stat(fullPath)
@@ -173,17 +162,20 @@ func fileExistsValidator(path string) error {
 	return nil
 }
 
-func expandPath(path string) (string, error) {
+func resolvePath(path string) (string, error) {
+	path = strings.TrimSpace(path)
+
 	if strings.HasPrefix(path, "~/") {
-		home, err := os.UserHomeDir()
+		homeDir, err := os.UserHomeDir()
 		if err != nil {
 			return "", err
 		}
-		return filepath.Join(home, path[2:]), nil
+		path = filepath.Join(homeDir, path[2:])
 	}
-	return path, nil
+	return filepath.Abs(path)
 }
 
 func init() {
+	rootCmd.AddCommand(addCmd)
 	addCmd.AddCommand(addServer)
 }

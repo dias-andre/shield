@@ -1,4 +1,4 @@
-package cmd
+package cli
 
 import (
 	"crypto/rand"
@@ -33,14 +33,14 @@ var setupCmd = &cobra.Command{
 			if _, err := rand.Read(key); err != nil {
 				sp.Suffix = "Stopped!"
 				sp.Stop()
-				return fmt.Errorf("failed to generate random key: %s", err.Error())
+				return fmt.Errorf("failed to generate random key: %w", err)
 			}
 
 			err := keysystem.SaveKey(key)
 			if err != nil {
 				sp.Suffix = "Stopped!"
 				sp.Stop()
-				return fmt.Errorf("failed to save key: %s", err.Error())
+				return fmt.Errorf("failed to save key: %w", err)
 			}
 		}
 
@@ -51,7 +51,7 @@ var setupCmd = &cobra.Command{
 			if err := vaultSystem.SaveVault(&vault, key); err != nil {
 				sp.Suffix = "Stopped!"
 				sp.Stop()
-				return fmt.Errorf("failed to save file: %s", err.Error())
+				return fmt.Errorf("failed to save file: %w", err)
 			}
 			sp.Stop()
 			color.Green("Vault created!")
@@ -65,4 +65,8 @@ var setupCmd = &cobra.Command{
 		sp.Stop()
 		return fmt.Errorf("failed to check vault health: %w", err)
 	},
+}
+
+func init() {
+	rootCmd.AddCommand(setupCmd)
 }

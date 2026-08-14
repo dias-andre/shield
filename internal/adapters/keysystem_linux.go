@@ -1,8 +1,8 @@
 package adapters
 
 import (
+	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/godbus/dbus/v5"
@@ -13,22 +13,24 @@ const (
 	dbusPath = "/org/freedesktop/secrets"
 )
 
+var ErrMasterKeyNotFound = errors.New("master key not found")
+
 type LinuxKeyring struct {
 	conn       *dbus.Conn
 	collection string
 	itemLabel  string
 }
 
-func NewKeyringSystem() *LinuxKeyring {
+func NewKeyringSystem() (*LinuxKeyring, error) {
 	conn, err := dbus.ConnectSessionBus()
 	if err != nil {
-		os.Exit(1)
+		return nil, fmt.Errorf("failed to connect to session bus: %w", err)
 	}
 	return &LinuxKeyring{
 		conn:       conn,
 		collection: "shield-cli",
 		itemLabel:  "master-key",
-	}
+	}, nil
 }
 
 func (l *LinuxKeyring) GetKey() ([]byte, error) {
@@ -52,7 +54,7 @@ func (l *LinuxKeyring) GetKey() ([]byte, error) {
 	).Store(&items)
 
 	if err != nil {
-		return nil, fmt.Errorf("Failed to get items: %v", err)
+		return nil, fmt.Errorf("failed to get items: %w", err)
 	}
 
 	for _, itemPath := range items {
@@ -82,7 +84,7 @@ func (l *LinuxKeyring) GetKey() ([]byte, error) {
 		return secret.Value, nil
 	}
 
-	return nil, fmt.Errorf("Master key not found")
+	return nil, ErrMasterKeyNotFound
 }
 
 func (l *LinuxKeyring) SaveKey(key []byte) error {
@@ -130,7 +132,7 @@ func (l *LinuxKeyring) SaveKey(key []byte) error {
 	).Store(&createdItem, &promptPath)
 
 	if err != nil {
-		return fmt.Errorf("Failed to save item: %v", err)
+		return fmt.Errorf("failed to save item: %w", err)
 	}
 
 	if promptPath != "/" {
@@ -140,7 +142,6 @@ func (l *LinuxKeyring) SaveKey(key []byte) error {
 		}
 	}
 
-	fmt.Printf("Key saved at: %s\n", createdItem)
 	return nil
 }
 
@@ -153,7 +154,7 @@ func (l *LinuxKeyring) getDefaultCollection() (dbus.ObjectPath, error) {
 	).Store(&collections)
 
 	if err != nil {
-		return "", fmt.Errorf("Failed to get collections: %v", err)
+		return "", fmt.Errorf("failed to get collections: %w", err)
 	}
 
 	preferredCollections := []string{"kdewallet", "login", "default"}
@@ -192,7 +193,7 @@ func (l *LinuxKeyring) getDefaultCollection() (dbus.ObjectPath, error) {
 	)
 	err = unlockCall.Store(&unlockedPaths, &promptPath)
 	if err != nil {
-		return "", fmt.Errorf("Failed to unlock collection: %v", err)
+		return "", fmt.Errorf("failed to unlock collection: %w", err)
 	}
 
 	if promptPath != "/" {
@@ -219,7 +220,7 @@ func (l *LinuxKeyring) openSession(serviceObj dbus.BusObject) (dbus.ObjectPath, 
 	).Store(&output, &sessionPath)
 
 	if err != nil {
-		return "", fmt.Errorf("Failed to open session: %v", err)
+		return "", fmt.Errorf("failed to open session: %w", err)
 	}
 
 	return sessionPath, nil
@@ -251,29 +252,28 @@ func (l *LinuxKeyring) handlePrompt(promptPath dbus.ObjectPath) (dbus.Variant, e
 	)
 
 	if err != nil {
-		return dbus.Variant{}, fmt.Errorf("erro ao registrar sinal: %v", err)
+		return dbus.Variant{}, fmt.Errorf("failed to register prompt signal: %w", err)
 	}
 
 	obj := l.conn.Object("org.freedesktop.secrets", promptPath)
 	err = obj.Call("org.freedesktop.Secret.Prompt.Prompt", 0, "").Err
 
 	if err != nil {
-		return dbus.Variant{}, fmt.Errorf("Failed to emit prompt: %v", err)
+		return dbus.Variant{}, fmt.Errorf("failed to emit prompt: %w", err)
 	}
 
-	fmt.Println("Waiting human interaction...")
 	for sig := range ch {
 		if sig.Path == promptPath && sig.Name == "org.freedesktop.Secret.Prompt.Completed" {
 			dismissed := sig.Body[0].(bool)
 			result := sig.Body[1].(dbus.Variant)
 
 			if dismissed {
-				return dbus.Variant{}, fmt.Errorf("User cancelled!")
+				return dbus.Variant{}, errors.New("user cancelled")
 			}
 			return result, nil
 		}
 	}
-	return dbus.Variant{}, fmt.Errorf("Prompt closed!")
+	return dbus.Variant{}, errors.New("prompt closed")
 }
 
 func (l *LinuxKeyring) Lock() error {

@@ -1,0 +1,10 @@
+[Unit]
+Description=Shield Key Vault Daemon
+
+[Service]
+ExecStart=/home/seu_usuario/go/bin/shieldd
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=default.target

@@ -1,4 +1,4 @@
-package cmd
+package cli
 
 import (
 	"fmt"
@@ -9,8 +9,9 @@ import (
 )
 
 var showKeyCmd = &cobra.Command{
-	Use:   "show-key",
+	Use:   "show-key [server name]",
 	Short: "Get the raw server key",
+	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		masterKey, err := keysystem.GetKey()
 		if err != nil {
@@ -20,7 +21,7 @@ var showKeyCmd = &cobra.Command{
 
 		vault, err := vaultSystem.GetVault(masterKey)
 		if err != nil {
-			return fmt.Errorf("failed to get vault: %v", err)
+			return fmt.Errorf("failed to get vault: %w", err)
 		}
 		defer vault.Erase()
 
@@ -29,12 +30,14 @@ var showKeyCmd = &cobra.Command{
 			return fmt.Errorf("server '%s' not found", args[0])
 		}
 
-		_, err = os.Stdout.Write(entry.PrivateKey)
-		if err != nil {
-			return fmt.Errorf("failed to write on stdout: %w", err)
+		if _, err := os.Stdout.Write(entry.PrivateKey); err != nil {
+			return fmt.Errorf("failed to write to stdout: %w", err)
 		}
-		// fmt.Fprintf(os.Stderr, "DEBUG: Size of decripted key %d bytes\n", len(entry.PrivateKey))
 
 		return nil
 	},
+}
+
+func init() {
+	rootCmd.AddCommand(showKeyCmd)
 }

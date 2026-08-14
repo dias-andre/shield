@@ -1,10 +1,11 @@
-// Package services which manages all ports and adapters to work with shield Vault
+// Package services orchestrates the ports and adapters that back the shield vault.
 package services
 
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 
 	"github.com/dias-andre/shield/internal/core"
 )
@@ -15,10 +16,8 @@ type VaultService struct {
 }
 
 var (
-	ErrVaultFileNotExists = errors.New("vault file not found")
-	ErrSSHEntryNotFound   = errors.New("ssh entry not found")
-	ErrDecryptionFailed   = errors.New("vault decription error")
-	ErrBrokenVault        = errors.New("vault file is broken")
+	ErrDecryptionFailed = errors.New("vault decryption error")
+	ErrBrokenVault      = errors.New("vault file is broken")
 )
 
 const (
@@ -26,25 +25,6 @@ const (
 	ShieldMinor byte = 1
 	ShieldPatch byte = 0
 )
-
-func (s *VaultService) GetVaultOld(key []byte) (*core.Vault, error) {
-	var vault core.Vault
-
-	encryptedContent, err := s.storage.Load()
-	if err != nil {
-		return nil, err
-	}
-
-	plaintext, err := s.crypto.Decrypt(encryptedContent, key)
-	if err != nil {
-		return nil, errors.Join(ErrDecryptionFailed, err)
-	}
-	err = json.Unmarshal(plaintext, &vault)
-	if err != nil {
-		return nil, err
-	}
-	return &vault, nil
-}
 
 func (s *VaultService) GetVault(key []byte) (*core.Vault, error) {
 	rawVaultStorage, ok := s.storage.(core.SupportRawVault)
@@ -54,21 +34,19 @@ func (s *VaultService) GetVault(key []byte) (*core.Vault, error) {
 	rawVault, err := rawVaultStorage.LoadRawVault()
 	if err != nil {
 		if errors.Is(err, core.ErrInvalidMagic) {
-			// try with the old method
 			result, err := s.storage.Load()
 			if err != nil {
 				return nil, errors.Join(ErrBrokenVault, core.ErrInvalidMagic, err)
 			}
-			fmt.Println("Deprecated vault format detected. Shield will attempt to upgrade it.")
+			slog.Info("deprecated vault format detected, upgrading")
 			rawVault, err = s.ParseBytesToRawVault(result)
 			if err != nil {
-				return nil, fmt.Errorf("failed to upgrade vault format: %v", err)
+				return nil, fmt.Errorf("failed to upgrade vault format: %w", err)
 			}
-			err = rawVaultStorage.SaveRawVault(rawVault)
-			if err != nil {
-				return nil, fmt.Errorf("failed to upgrade vault format: %v", err)
+			if err := rawVaultStorage.SaveRawVault(rawVault); err != nil {
+				return nil, fmt.Errorf("failed to upgrade vault format: %w", err)
 			}
-			fmt.Println("Vault successfully upgraded to the latest version.")
+			slog.Info("vault upgraded to the latest format")
 		} else {
 			return nil, err
 		}
@@ -107,51 +85,6 @@ func (s *VaultService) ParseBytesToRawVault(vaultInBytes []byte) (*core.RawVault
 	return &raw, nil
 }
 
-func (s *VaultService) AddSSHEntry(entry core.SSHEntry, key []byte) error {
-	v, err := s.GetVault(key)
-	if err != nil {
-		if errors.Is(err, ErrVaultFileNotExists) {
-			newVault := core.NewVault()
-			v = &newVault
-		} else {
-			return err
-		}
-	}
-	defer v.Erase()
-
-	v.Entries[entry.Name] = entry
-
-	jsonData, err := json.Marshal(v)
-	if err != nil {
-		return err
-	}
-
-	vaultEncrypted, err := s.crypto.Encrypt(jsonData, key)
-	if err != nil {
-		return err
-	}
-	return s.storage.Save(vaultEncrypted)
-}
-
-func (s *VaultService) DeleteSSHEntry(entryName string, key []byte) error {
-	vault, err := s.GetVault(key)
-	if err != nil {
-		return err
-	}
-	defer vault.Erase()
-
-	if entry, ok := vault.Entries[entryName]; ok {
-		delete(vault.Entries, entry.Name)
-		err := s.SaveVault(vault, key)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-
-	return ErrSSHEntryNotFound
-}
-
 func (s *VaultService) InitVault() core.Vault {
 	return core.NewVault()
 }
@@ -159,7 +92,7 @@ func (s *VaultService) InitVault() core.Vault {
 func (s *VaultService) SaveVault(vault *core.Vault, key []byte) error {
 	jsonData, err := json.Marshal(vault)
 	if err != nil {
-		return nil
+		return err
 	}
 	encryptedVault, err := s.crypto.Encrypt(jsonData, key)
 	if err != nil {

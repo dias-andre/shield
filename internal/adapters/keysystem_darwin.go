@@ -1,8 +1,8 @@
 package adapters
 
-func NewKeyringSystem() *KeyringSystem {
+func NewKeyringSystem() (*KeyringSystem, error) {
 	return &KeyringSystem{
 		serviceName: shieldServiceName,
-		keyName: shieldKeyName,
-	}
+		keyName:     shieldKeyName,
+	}, nil
 }
