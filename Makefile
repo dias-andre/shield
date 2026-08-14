@@ -13,8 +13,8 @@ release:
 	@for os in $(PLATFORMS); do \
 		for arch in $(ARCHITECTURES); do \
 			echo "Building for $$os/$$arch..."; \
-			GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 go build $(LDFLAGS) -o target/dist/$(BINARY_NAME) cmd/shield/main.go; \
-			GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 go build $(LDFLAGS) -o target/dist/$(DAEMON_NAME) cmd/shieldd/main.go; \
+			GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 go build $(LDFLAGS) -o target/dist/$(BINARY_NAME) ./cmd/shield; \
+			GOOS=$$os GOARCH=$$arch CGO_ENABLED=0 go build $(LDFLAGS) -o target/dist/$(DAEMON_NAME) ./cmd/shieldd; \
 			tar -czvf target/dist/$(BINARY_NAME)_$(VERSION)_$${os}_$${arch}.tar.gz -C target/dist $(BINARY_NAME) $(DAEMON_NAME); \
 			rm -f target/dist/$(BINARY_NAME) target/dist/$(DAEMON_NAME); \
 		done \
