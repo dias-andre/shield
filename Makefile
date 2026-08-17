@@ -1,9 +1,9 @@
 BINARY_NAME=shield
-DAEMON_NAME=shieldd
-VERSION=0.1.0
+DAEMON_NAME=shldd
+VERSION=0.2.1
 LDFLAGS=-ldflags="-s -w"
 
-PLATFORMS=linux darwin
+PLATFORMS=linux
 ARCHITECTURES=amd64 arm64
 
 release:
