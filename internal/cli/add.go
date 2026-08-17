@@ -10,6 +10,7 @@ import (
 	"github.com/briandowns/spinner"
 	"github.com/dias-andre/shield/internal/api"
 	"github.com/dias-andre/shield/internal/core"
+	"github.com/dias-andre/shield/internal/utils"
 
 	"github.com/AlecAivazis/survey/v2"
 	"github.com/spf13/cobra"
@@ -76,9 +77,9 @@ var addServer = &cobra.Command{
 			}
 		}
 
-		if strings.HasPrefix(auth, "file:") {
+		if len(auth) > 0 {
 			authMethod = string(core.AuthMethodKey)
-			auth = strings.ReplaceAll(auth, "file:", "")
+			// auth = strings.ReplaceAll(auth, "file:", "")
 		}
 
 		if auth == "" {
@@ -130,7 +131,13 @@ var addServer = &cobra.Command{
 			if err := fileExistsValidator(expandedPath); err != nil {
 				return fmt.Errorf("failed to read file: %w", err)
 			}
-			request.KeyLocation = expandedPath
+			fileContent, err := os.ReadFile(expandedPath)
+			if err != nil {
+				return fmt.Errorf("failed to read file: %w", err)
+			}
+			defer utils.Clear(fileContent)
+			request.PrivateKey = make([]byte, len(fileContent))
+			copy(request.PrivateKey, fileContent)
 		}
 		if err := globalClient.Call("VaultServer.CreateEntry", &request, &reply); err != nil {
 			sp.FinalMSG = "Operation failed!\n"
