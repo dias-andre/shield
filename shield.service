@@ -2,7 +2,7 @@
 Description=Shield Key Vault Daemon
 
 [Service]
-ExecStart=/home/seu_usuario/go/bin/shieldd
+ExecStart=/usr/bin/shldd
 Restart=always
 RestartSec=3
 
