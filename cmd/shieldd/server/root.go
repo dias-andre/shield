@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"os"
 	"sync"
 
 	"github.com/dias-andre/shield/internal/api"
@@ -144,16 +143,8 @@ func (s *Session) CreateEntry(req *api.CreateSSHEntryRequest, reply *api.CreateS
 	}
 
 	if newEntry.AuthType == core.AuthMethodKey {
-		fileContent, err := os.ReadFile(req.KeyLocation)
-		if err != nil {
-			slog.Error("failed to read private key", "path", req.KeyLocation, "error", err)
-			reply.Success = false
-			reply.ErrorCode = 404
-			reply.ErrorMsg = "key file not found"
-			return nil
-		}
-		defer utils.Clear(fileContent)
-		newEntry.PrivateKey = fileContent
+		newEntry.PrivateKey = make([]byte, len(req.PrivateKey))
+		copy(newEntry.PrivateKey, req.PrivateKey)
 	}
 
 	s.vault.Entries[newEntry.Name] = newEntry
@@ -166,13 +157,13 @@ func (s *Session) CreateEntry(req *api.CreateSSHEntryRequest, reply *api.CreateS
 		return nil
 	}
 	reply.Success = true
-	slog.Info("SSH entry created", "name", req.Name)
+	slog.Info("SSH entry created", "name", req.Name, "auth", newEntry.AuthType)
 	return nil
 }
 
 func (s *Session) GetServerEntry(req *api.GetServerEntryRequest, reply *api.GetServerEntryReply) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	entry, exists := s.vault.Entries[req.Name]
 	if exists {
 		*reply = api.GetServerEntryReply{
@@ -211,5 +202,32 @@ func (s *Session) RemoveEntry(req *api.RemoveSSHEntryRequest, reply *api.RemoveS
 	reply.Success = false
 	reply.ErrorMsg = fmt.Sprintf("server '%s' not found", req.Name)
 	slog.Warn("entry removal requested for unknown entry", "name", req.Name)
+	return nil
+}
+
+func (s *Session) OpenConnection(req *api.OpenConnectionRequest, reply *api.OpenConnectionReply) error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	entry, exists := s.vault.Entries[req.EntryName]
+	if !exists {
+		reply.Success = false
+		reply.ErrorCode = 404
+		reply.ErrorMsg = fmt.Sprintf("server '%s' not found", req.EntryName)
+		slog.Warn("connection requested for unknown entry", "name", req.EntryName)
+		return nil
+	}
+
+	*reply = api.OpenConnectionReply{
+		Entry: api.ServerEntry{
+			Name: entry.Name,
+			Host: entry.Host,
+			User: entry.User,
+		},
+		AuthMethod: entry.AuthType,
+		Success:    true,
+	}
+	reply.PrivateKey = make([]byte, len(entry.PrivateKey))
+	copy(reply.PrivateKey, entry.PrivateKey)
+	slog.Info("entry connection requested", "name", req.EntryName, "auth", entry.AuthType)
 	return nil
 }

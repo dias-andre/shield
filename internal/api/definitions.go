@@ -10,11 +10,11 @@ type ServerEntry struct {
 }
 
 type CreateSSHEntryRequest struct {
-	Name        string
-	User        string
-	Host        string
-	AuthType    core.AuthMethod
-	KeyLocation string
+	Name       string
+	User       string
+	Host       string
+	AuthType   core.AuthMethod
+	PrivateKey []byte
 }
 
 type RemoveSSHEntryRequest struct {
@@ -45,4 +45,17 @@ type CreateSSHEntryReply struct {
 type GetServerEntryReply struct {
 	Entry   ServerEntry
 	Success bool
+}
+
+type OpenConnectionRequest struct {
+	EntryName string
+}
+
+type OpenConnectionReply struct {
+	Entry      ServerEntry
+	PrivateKey []byte
+	AuthMethod core.AuthMethod
+	Success    bool
+	ErrorCode  int
+	ErrorMsg   string
 }

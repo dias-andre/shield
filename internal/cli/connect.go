@@ -9,8 +9,8 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/dias-andre/shield/internal/api"
 	"github.com/dias-andre/shield/internal/core"
-	"github.com/dias-andre/shield/internal/utils"
 
 	"github.com/spf13/cobra"
 )
@@ -22,27 +22,51 @@ var connectCmd = &cobra.Command{
 	Short: "Connect to a saved server",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		masterKey, err := keysystem.GetKey()
-		if err != nil {
-			return fmt.Errorf("failed to get master key: %w", err)
+		if rpcErr := connectRPC(); rpcErr != nil {
+			return rpcErr
 		}
-		defer utils.Clear(masterKey)
+		request := api.OpenConnectionRequest{
+			EntryName: args[0],
+		}
+		reply := api.OpenConnectionReply{}
+		if err := globalClient.Call("VaultServer.OpenConnection", &request, &reply); err != nil {
+			return err
+		}
+		if !reply.Success {
+			if reply.ErrorCode == 404 {
+				return fmt.Errorf("server '%s' not found", args[0])
+			} else {
+				return errors.New(reply.ErrorMsg)
+			}
+		}
 
-		v, err := vaultSystem.GetVault(masterKey)
-		if err != nil {
-			return fmt.Errorf("failed to get vault: %w", err)
-		}
-		defer v.Erase()
+		// SSH CONNECTION
+		var command *exec.Cmd
 
-		entry, ok := v.Entries[args[0]]
-		if !ok {
-			return fmt.Errorf("server '%s' not found", args[0])
+		host, port, netErr := net.SplitHostPort(reply.Entry.Host)
+		if netErr != nil {
+			host = reply.Entry.Host
+			port = "22"
 		}
-		fmt.Printf("Connecting to '%s'\n", entry.Name)
-		if err := connectSSH(entry); err != nil {
-			return fmt.Errorf("failed to connect to '%s': %w", entry.Name, err)
+
+		if reply.AuthMethod == core.AuthMethodKey {
+			if len(reply.PrivateKey) <= 0 {
+				return errors.New("invalid private key")
+			}
+			if agentErr := addKeyToAgent(reply.PrivateKey); agentErr != nil {
+				return fmt.Errorf("ssh-agent error: %w", agentErr)
+			}
+			defer wipeAgentKeys()
 		}
-		return nil
+
+		target := fmt.Sprintf("%s@%s", reply.Entry.User, host)
+		command = exec.Command("ssh", "-p", port, target)
+		command.Stdin = os.Stdin
+		command.Stdout = os.Stdout
+		command.Stderr = os.Stderr
+
+		fmt.Printf("Connecting to '%s'\n", reply.Entry.Name)
+		return command.Run()
 	},
 }
 
@@ -66,33 +90,6 @@ func wipeAgentKeys() {
 	if err := cmd.Run(); err != nil {
 		slog.Warn("failed to wipe keys from ssh-agent", "error", err)
 	}
-}
-
-func connectSSH(entry core.SSHEntry) error {
-	var cmd *exec.Cmd
-
-	if entry.AuthType != core.AuthMethodKey {
-		return ErrNotPrivateKey
-	}
-
-	host, port, err := net.SplitHostPort(entry.Host)
-	if err != nil {
-		host = entry.Host
-		port = "22"
-	}
-
-	if err := addKeyToAgent(entry.PrivateKey); err != nil {
-		return fmt.Errorf("ssh-agent error: %w", err)
-	}
-	defer wipeAgentKeys()
-	target := fmt.Sprintf("%s@%s", entry.User, host)
-	cmd = exec.Command("ssh", "-p", port, target)
-
-	cmd.Stdin = os.Stdin
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	return cmd.Run()
 }
 
 func init() {
