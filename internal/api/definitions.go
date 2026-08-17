@@ -47,14 +47,25 @@ type GetServerEntryReply struct {
 	Success bool
 }
 
-type OpenConnectionRequest struct {
+type GetCredentialsRequest struct {
 	EntryName string
 }
 
-type OpenConnectionReply struct {
+type GetCredentialsReply struct {
 	Entry      ServerEntry
 	PrivateKey []byte
 	AuthMethod core.AuthMethod
+	Success    bool
+	ErrorCode  int
+	ErrorMsg   string
+}
+
+type FetchKeyRequest struct {
+	EntryName string
+}
+
+type FetchKeyReply struct {
+	PrivateKey []byte
 	Success    bool
 	ErrorCode  int
 	ErrorMsg   string

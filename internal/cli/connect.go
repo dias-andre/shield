@@ -25,10 +25,10 @@ var connectCmd = &cobra.Command{
 		if rpcErr := connectRPC(); rpcErr != nil {
 			return rpcErr
 		}
-		request := api.OpenConnectionRequest{
+		request := api.GetCredentialsRequest{
 			EntryName: args[0],
 		}
-		reply := api.OpenConnectionReply{}
+		reply := api.GetCredentialsReply{}
 		if err := globalClient.Call("VaultServer.OpenConnection", &request, &reply); err != nil {
 			return err
 		}

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/dias-andre/shield/internal/utils"
+	"github.com/dias-andre/shield/internal/api"
 	"github.com/spf13/cobra"
 )
 
@@ -13,24 +13,26 @@ var showKeyCmd = &cobra.Command{
 	Short: "Get the raw server key",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		masterKey, err := keysystem.GetKey()
-		if err != nil {
-			return err
-		}
-		defer utils.Clear(masterKey)
-
-		vault, err := vaultSystem.GetVault(masterKey)
-		if err != nil {
-			return fmt.Errorf("failed to get vault: %w", err)
-		}
-		defer vault.Erase()
-
-		entry, ok := vault.Entries[args[0]]
-		if !ok {
-			return fmt.Errorf("server '%s' not found", args[0])
+		if rpcErr := connectRPC(); rpcErr != nil {
+			return rpcErr
 		}
 
-		if _, err := os.Stdout.Write(entry.PrivateKey); err != nil {
+		req := api.FetchKeyRequest{
+			EntryName: args[0],
+		}
+		reply := api.FetchKeyReply{}
+
+		if serverErr := globalClient.Call("VaultServer.FetchKey", &req, &reply); serverErr != nil {
+			return fmt.Errorf("unknown error: %w", serverErr)
+		}
+		if !reply.Success {
+			if reply.ErrorCode == 404 {
+				return fmt.Errorf("server '%s' not found", args[0])
+			}
+			return fmt.Errorf("unserialized error: %s", reply.ErrorMsg)
+		}
+
+		if _, err := os.Stdout.Write(reply.PrivateKey); err != nil {
 			return fmt.Errorf("failed to write to stdout: %w", err)
 		}
 

@@ -205,7 +205,7 @@ func (s *Session) RemoveEntry(req *api.RemoveSSHEntryRequest, reply *api.RemoveS
 	return nil
 }
 
-func (s *Session) OpenConnection(req *api.OpenConnectionRequest, reply *api.OpenConnectionReply) error {
+func (s *Session) OpenConnection(req *api.GetCredentialsRequest, reply *api.GetCredentialsReply) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	entry, exists := s.vault.Entries[req.EntryName]
@@ -217,7 +217,7 @@ func (s *Session) OpenConnection(req *api.OpenConnectionRequest, reply *api.Open
 		return nil
 	}
 
-	*reply = api.OpenConnectionReply{
+	*reply = api.GetCredentialsReply{
 		Entry: api.ServerEntry{
 			Name: entry.Name,
 			Host: entry.Host,
@@ -229,5 +229,22 @@ func (s *Session) OpenConnection(req *api.OpenConnectionRequest, reply *api.Open
 	reply.PrivateKey = make([]byte, len(entry.PrivateKey))
 	copy(reply.PrivateKey, entry.PrivateKey)
 	slog.Info("entry connection requested", "name", req.EntryName, "auth", entry.AuthType)
+	return nil
+}
+
+func (s *Session) FetchKey(req *api.FetchKeyRequest, reply *api.FetchKeyReply) error {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	entry, exists := s.vault.Entries[req.EntryName]
+
+	if !exists {
+		reply.ErrorCode = 404
+		reply.ErrorMsg = fmt.Sprintf("server '%s' not found", req.EntryName)
+		reply.Success = false
+		return nil
+	}
+	reply.PrivateKey = make([]byte, len(entry.PrivateKey))
+	copy(reply.PrivateKey, entry.PrivateKey)
+	reply.Success = true
 	return nil
 }

@@ -30,7 +30,7 @@ var rootCmd = &cobra.Command{
 	Use:           "shield",
 	SilenceErrors: true,
 	SilenceUsage:  true,
-	Version:       "0.1.0",
+	Version:       "0.2.1",
 	Short:         "Tool for managing encrypted SSH keys",
 }
 
