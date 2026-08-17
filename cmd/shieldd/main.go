@@ -17,13 +17,18 @@ import (
 
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
+	socketPath := utils.GetSocket()
+	if fsErr := os.MkdirAll(socketPath, 0o700); fsErr != nil {
+		slog.Error("failed to prepare socket", "path", socketPath, "err", fsErr)
+		os.Exit(1)
+	}
 
-	if _, err := os.Stat(utils.SocketPath); err == nil {
-		if err := os.Remove(utils.SocketPath); err != nil {
-			slog.Error("failed to remove stale socket file", "path", utils.SocketPath, "error", err)
+	if _, err := os.Stat(socketPath); err == nil {
+		if err := os.Remove(socketPath); err != nil {
+			slog.Error("failed to remove stale socket file", "path", socketPath, "error", err)
 			os.Exit(1)
 		}
-		slog.Info("removed stale socket file", "path", utils.SocketPath)
+		slog.Info("removed stale socket file", "path", socketPath)
 	}
 
 	keysystem, err := adapters.NewKeyringSystem()
@@ -51,16 +56,16 @@ func main() {
 		slog.Error("failed to register RPC host", "error", err)
 		os.Exit(1)
 	}
-	listener, err := net.Listen("unix", utils.SocketPath)
+	listener, err := net.Listen("unix", socketPath)
 	if err != nil {
-		slog.Error("failed to listen on socket", "path", utils.SocketPath, "error", err)
+		slog.Error("failed to listen on socket", "path", socketPath, "error", err)
 		os.Exit(1)
 	}
-	if err := os.Chmod(utils.SocketPath, 0o600); err != nil {
+	if err := os.Chmod(socketPath, 0o600); err != nil {
 		slog.Error("failed to set socket permissions", "error", err)
 		os.Exit(1)
 	}
-	slog.Info("daemon started", "socket", utils.SocketPath)
+	slog.Info("daemon started", "socket", socketPath)
 
 	go func() {
 		for {

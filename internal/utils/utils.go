@@ -6,8 +6,6 @@ import (
 	"path/filepath"
 )
 
-const SocketPath = "/tmp/shield.sock"
-
 func GetDataPath() (string, error) {
 	dataHome := os.Getenv("XDG_DATA_HOME")
 	if dataHome == "" {
@@ -25,6 +23,12 @@ func GetDataPath() (string, error) {
 	}
 
 	return filepath.Join(appDataDir, "keys.vault"), nil
+}
+
+func GetSocket() string {
+	runtimeDir := os.Getenv("XDG_RUNTIME_DIR")
+	socketDir := filepath.Join(runtimeDir, "shield")
+	return filepath.Join(socketDir, "shield.sock")
 }
 
 func Clear(b []byte) {

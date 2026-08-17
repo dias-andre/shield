@@ -54,7 +54,7 @@ func connectRPC() error {
 	if globalClient != nil {
 		return nil
 	}
-	client, err := rpc.Dial("unix", utils.SocketPath)
+	client, err := rpc.Dial("unix", utils.GetSocket())
 	if err != nil {
 		return fmt.Errorf("failed to connect to shield daemon: %w (is shieldd running?)", err)
 	}
