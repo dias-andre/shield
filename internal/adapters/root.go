@@ -10,11 +10,6 @@ package adapters
 
 import "github.com/dias-andre/shield/internal/core"
 
-const (
-	shieldServiceName = "shield-cli"
-	shieldKeyName     = "master-key"
-)
-
 func NewFileSystemStorage(path string) core.StoragePort {
 	var storage FileStorage
 	storage.vaultPath = path

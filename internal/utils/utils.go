@@ -31,6 +31,19 @@ func GetSocket() string {
 	return filepath.Join(socketDir, "shield.sock")
 }
 
+func GetBackupDir() (string, error) {
+	dataHome := os.Getenv("XDG_DATA_HOME")
+	if dataHome == "" {
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", err
+		}
+		dataHome = filepath.Join(home, ".local", "share")
+	}
+	appBackupDir := filepath.Join(dataHome, "shield", ".snapshots")
+	return appBackupDir, nil
+}
+
 func Clear(b []byte) {
 	for i := range b {
 		b[i] = 0

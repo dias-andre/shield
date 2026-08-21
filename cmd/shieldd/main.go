@@ -17,6 +17,16 @@ import (
 
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
+	vaultPath, err := utils.GetDataPath()
+	if err != nil {
+		slog.Error("failed to resolve vault path", "error", err)
+		os.Exit(1)
+	}
+	backupPath, err := utils.GetBackupDir()
+	if err != nil {
+		slog.Error("failed to resolve backup directory", "error", err)
+		os.Exit(1)
+	}
 	socketPath := utils.GetSocket()
 	if fsErr := os.MkdirAll(socketPath, 0o700); fsErr != nil {
 		slog.Error("failed to prepare socket", "path", socketPath, "err", fsErr)
@@ -36,16 +46,13 @@ func main() {
 		slog.Error("failed to initialize keyring system", "error", err)
 		os.Exit(1)
 	}
-	vaultPath, err := utils.GetDataPath()
-	if err != nil {
-		slog.Error("failed to resolve vault path", "error", err)
-		os.Exit(1)
-	}
 	storage := adapters.NewFileSystemStorage(vaultPath)
 	encryptor := adapters.NewAESEncryptor()
+	backup := adapters.NewLocalFileBackup(backupPath, encryptor)
 	service := services.NewVaultService(encryptor, storage)
 
-	host := server.NewSession(keysystem, service)
+	host := server.NewSession(keysystem, service, backup)
+
 	if err := host.Init(); err != nil {
 		slog.Error("failed to initialize host", "error", err)
 		os.Exit(1)

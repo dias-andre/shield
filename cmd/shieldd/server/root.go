@@ -15,18 +15,20 @@ import (
 
 type Session struct {
 	mu            sync.RWMutex
+	backupTrigger chan struct{}
 	vault         *core.Vault
 	masterKey     []byte
 	keySystem     core.KeySystemPort
 	vaultService  services.VaultService
-	backupTrigger chan struct{}
+	backup        core.BackupPort
 }
 
-func NewSession(ks core.KeySystemPort, vs services.VaultService) *Session {
+func NewSession(ks core.KeySystemPort, vs services.VaultService, bp core.BackupPort) *Session {
 	return &Session{
+		backupTrigger: make(chan struct{}, 1),
 		keySystem:     ks,
 		vaultService:  vs,
-		backupTrigger: make(chan struct{}, 1),
+		backup:        bp,
 	}
 }
 
@@ -37,8 +39,9 @@ func (s *Session) backupWorker() {
 		s.vaultService.CopyVault(&vaultCopy, s.vault)
 		s.mu.RUnlock()
 
-		// backup with vaultCopy
-		// TODO: implement backup port
+		if err := s.backup.CreateBackup(&vaultCopy, s.masterKey); err != nil {
+			slog.Error("failed to create backup", "error", err)
+		}
 	}
 }
 
