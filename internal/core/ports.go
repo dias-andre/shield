@@ -1,6 +1,8 @@
 package core
 
-import "errors"
+import (
+	"errors"
+)
 
 var (
 	ErrVaultFileNotExists      = errors.New("vault file does not exist")
@@ -8,6 +10,21 @@ var (
 	ErrInvalidMagic            = errors.New("invalid vault magic")
 	ErrInvalidVaultPermissions = errors.New("invalid vault permissions")
 )
+
+type EncryptorPort interface {
+	Encrypt(vault []byte, key []byte) ([]byte, error)
+	Decrypt(data []byte, key []byte) ([]byte, error)
+	GetMinimumVaultSize() int64
+}
+
+type KeySystemPort interface {
+	GetKey() ([]byte, error)
+	SaveKey([]byte) error
+}
+
+type Lockable interface {
+	Lock() error
+}
 
 type StoragePort interface {
 	Save(v []byte) error
@@ -20,4 +37,8 @@ type StoragePort interface {
 type SupportRawVault interface {
 	LoadRawVault() (*RawVault, error)
 	SaveRawVault(*RawVault) error
+}
+
+type BackupPort interface {
+	CreateBackup(*Vault, []byte) error
 }

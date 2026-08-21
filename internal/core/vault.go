@@ -7,6 +7,9 @@ const (
 	AuthMethodPassword AuthMethod = "password"
 	AuthMethodKey      AuthMethod = "key"
 	NoneAuthMethod     AuthMethod = "none"
+	ShieldMajor        uint8      = 0
+	ShieldMinor        uint8      = 2
+	ShieldPatch        uint8      = 1
 )
 
 type SSHEntry struct {
