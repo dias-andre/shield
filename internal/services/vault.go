@@ -130,3 +130,19 @@ func (s *VaultService) CheckVaultHealth() (bool, error) {
 	}
 	return true, nil
 }
+
+func (s *VaultService) CopyVault(dst *core.Vault, src *core.Vault) {
+	*dst = *src
+	if src.Entries != nil {
+		dst.Entries = make(map[string]core.SSHEntry, len(src.Entries))
+		for key, srcEntry := range src.Entries {
+			dstEntry := srcEntry
+			if dstEntry.AuthType == core.AuthMethodKey && srcEntry.PrivateKey != nil {
+				dstEntry.PrivateKey = make([]byte, len(srcEntry.PrivateKey))
+				copy(dstEntry.PrivateKey, srcEntry.PrivateKey)
+			}
+			dst.Entries[key] = dstEntry
+
+		}
+	}
+}
