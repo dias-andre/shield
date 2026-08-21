@@ -3,7 +3,6 @@ package server
 
 import (
 	"crypto/rand"
-	"errors"
 	"fmt"
 	"log/slog"
 	"sync"
@@ -15,18 +14,109 @@ import (
 )
 
 type Session struct {
-	mu           sync.RWMutex
-	vault        *core.Vault
-	masterKey    []byte
-	keySystem    core.KeySystemPort
-	vaultService services.VaultService
+	mu            sync.RWMutex
+	vault         *core.Vault
+	masterKey     []byte
+	keySystem     core.KeySystemPort
+	vaultService  services.VaultService
+	backupTrigger chan struct{}
 }
 
 func NewSession(ks core.KeySystemPort, vs services.VaultService) *Session {
 	return &Session{
-		keySystem:    ks,
-		vaultService: vs,
+		keySystem:     ks,
+		vaultService:  vs,
+		backupTrigger: make(chan struct{}, 1),
 	}
+}
+
+func (s *Session) backupWorker() {
+	for range s.backupTrigger {
+		s.mu.RLock()
+		vaultCopy := core.NewVault()
+		s.vaultService.CopyVault(&vaultCopy, s.vault)
+		s.mu.RUnlock()
+
+		// backup with vaultCopy
+		// TODO: implement backup port
+	}
+}
+
+func (s *Session) requestAsyncBackup() {
+	select {
+	case s.backupTrigger <- struct{}{}:
+	default:
+	}
+}
+
+func (s *Session) Init() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	key, err := s.keySystem.GetKey()
+	if err != nil {
+		return fmt.Errorf("failed to load master key: %w", err)
+	}
+	if key == nil {
+		slog.Warn("master key not found")
+		slog.Info("generating master key")
+		if err := s.genKey(); err != nil {
+			return err
+		}
+	}
+	s.masterKey = make([]byte, len(key))
+	copy(s.masterKey, key)
+	slog.Info("session master key loaded")
+
+	vaultExists, err := s.vaultService.VaultExists()
+	if err != nil {
+		return err
+	}
+	if !vaultExists {
+		slog.Warn("vault not found")
+		slog.Info("initializing new vault")
+		if err := s.initNewVault(); err != nil {
+			return err
+		}
+	}
+	vault, err := s.vaultService.GetVault(s.masterKey)
+	if err != nil {
+		return fmt.Errorf("failed to load vault: %w", err)
+	}
+	s.vault = vault
+	slog.Info("session vault loaded")
+	go s.backupWorker()
+	slog.Info("backup thread spawned")
+	return nil
+}
+
+func (s *Session) genKey() error {
+	key := make([]byte, 32)
+	if _, err := rand.Read(key); err != nil {
+		return err
+	}
+	if err := s.keySystem.SaveKey(key); err != nil {
+		return err
+	}
+	s.masterKey = make([]byte, len(key))
+	copy(s.masterKey, key)
+	return nil
+}
+
+func (s *Session) initNewVault() error {
+	vault := s.vaultService.InitVault()
+	if err := s.vaultService.SaveVault(&vault, s.masterKey); err != nil {
+		return err
+	}
+	s.vault = &vault
+	return nil
+}
+
+func (s *Session) Destroy() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	utils.Clear(s.masterKey)
+	s.vault.Erase()
 }
 
 func (s *Session) Setup() error {
@@ -60,45 +150,10 @@ func (s *Session) Setup() error {
 			return err
 		}
 		slog.Info("vault initialized")
+		return nil
 	}
+
 	return nil
-}
-
-func (s *Session) Init() error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	key, err := s.keySystem.GetKey()
-	if err != nil {
-		return fmt.Errorf("failed to load master key: %w", err)
-	}
-	if key == nil {
-		return errors.New("master key not found")
-	}
-	s.masterKey = key
-	slog.Info("session master key loaded")
-
-	vaultExists, err := s.vaultService.VaultExists()
-	if err != nil {
-		return err
-	}
-	if !vaultExists {
-		return errors.New("vault not found")
-	}
-	vault, err := s.vaultService.GetVault(s.masterKey)
-	if err != nil {
-		return fmt.Errorf("failed to load vault: %w", err)
-	}
-	s.vault = vault
-	slog.Info("session vault loaded")
-	return nil
-}
-
-func (s *Session) Destroy() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	utils.Clear(s.masterKey)
-	s.vault.Erase()
 }
 
 func (s *Session) Ping(req *uint32, reply *uint32) error {
@@ -108,8 +163,8 @@ func (s *Session) Ping(req *uint32, reply *uint32) error {
 }
 
 func (s *Session) FetchEntries(_ api.EmptyRequest, reply *api.FetchEntriesReply) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.mu.RLock()
+	defer s.mu.RUnlock()
 	reply.Entries = make([]api.ServerEntry, 0, len(s.vault.Entries))
 	for name, entry := range s.vault.Entries {
 		serverEntry := api.ServerEntry{
@@ -154,8 +209,9 @@ func (s *Session) CreateEntry(req *api.CreateSSHEntryRequest, reply *api.CreateS
 		reply.ErrorCode = 500
 		reply.ErrorMsg = fmt.Sprintf("failed to save vault: %v", syncErr)
 		delete(s.vault.Entries, req.Name)
-		return nil
+		return syncErr
 	}
+	s.requestAsyncBackup()
 	reply.Success = true
 	slog.Info("SSH entry created", "name", req.Name, "auth", newEntry.AuthType)
 	return nil
@@ -195,6 +251,7 @@ func (s *Session) RemoveEntry(req *api.RemoveSSHEntryRequest, reply *api.RemoveS
 			s.vault.Entries[entry.Name] = entry
 			return nil
 		}
+		s.requestAsyncBackup()
 		reply.Success = true
 		slog.Info("entry removed", "name", req.Name)
 		return nil
