@@ -44,6 +44,14 @@ func GetBackupDir() (string, error) {
 	return appBackupDir, nil
 }
 
+func GetConfigDir() (string, error) {
+	dataHome, err := os.UserHomeDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(dataHome, ".config", "shield"), nil
+}
+
 func Clear(b []byte) {
 	for i := range b {
 		b[i] = 0

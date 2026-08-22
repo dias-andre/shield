@@ -11,12 +11,23 @@ import (
 
 	"github.com/dias-andre/shield/cmd/shieldd/server"
 	"github.com/dias-andre/shield/internal/adapters"
+	"github.com/dias-andre/shield/internal/config"
 	"github.com/dias-andre/shield/internal/services"
 	"github.com/dias-andre/shield/internal/utils"
 )
 
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
+	configDir, err := utils.GetConfigDir()
+	if err != nil {
+		slog.Error("failed to resolve configuration file", "error", err)
+		os.Exit(1)
+	}
+	cfg, err := config.LoadConfig(configDir)
+	if err != nil {
+		slog.Error("failed to parse configuration file, check config.toml", "directory", configDir, "error", err)
+	}
+	slog.Info("configuration loaded")
 	vaultPath, err := utils.GetDataPath()
 	if err != nil {
 		slog.Error("failed to resolve vault path", "error", err)
@@ -48,7 +59,7 @@ func main() {
 	}
 	storage := adapters.NewFileSystemStorage(vaultPath)
 	encryptor := adapters.NewAESEncryptor()
-	backup := adapters.NewLocalFileBackup(backupPath, encryptor)
+	backup := adapters.NewLocalFileBackup(backupPath, encryptor, uint8(cfg.Backup.MaxKeep))
 	service := services.NewVaultService(encryptor, storage)
 
 	host := server.NewSession(keysystem, service, backup)
