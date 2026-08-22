@@ -16,22 +16,31 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/dias-andre/shield/internal/core"
 )
 
-const backupMagic = "SDBK"
+const (
+	backupMagic    = "SDBK"
+	snapshotPrefix = "shield_"
+	snapshotExt    = ".shieldbk"
+	timeLayout     = "20060102_150405"
+)
 
 type LocalFileBackup struct {
-	localPrefix string
-	encrypter   core.EncryptorPort
+	localPrefix   string
+	encrypter     core.EncryptorPort
+	keepSnapshots uint8
 }
 
-func NewLocalFileBackup(local string, port core.EncryptorPort) core.BackupPort {
+func NewLocalFileBackup(local string, port core.EncryptorPort, maxSnapshots uint8) core.BackupPort {
 	var backup LocalFileBackup
 	backup.localPrefix = local
 	backup.encrypter = port
+	backup.keepSnapshots = maxSnapshots
 	return &backup
 }
 
@@ -73,6 +82,67 @@ func (l *LocalFileBackup) CreateBackup(vault *core.Vault, masterKey []byte) erro
 	}
 	if err := os.WriteFile(path, backup, 0o600); err != nil {
 		return err
+	}
+	return l.RotateBackups(int(l.keepSnapshots))
+}
+
+func (l *LocalFileBackup) ListSnapshots() ([]core.SnapshotInfo, error) {
+	entries, err := os.ReadDir(l.localPrefix)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("faield to read snapshot directory: %w", err)
+	}
+
+	snapshots := make([]core.SnapshotInfo, 0, len(entries))
+	for _, entry := range entries {
+		if entry.IsDir() {
+			continue
+		}
+
+		name := entry.Name()
+		if !strings.HasPrefix(name, snapshotPrefix) || !strings.HasSuffix(name, snapshotExt) {
+			continue
+		}
+
+		rawTime := strings.TrimSuffix(strings.TrimPrefix(name, snapshotPrefix), snapshotExt)
+		parsedTime, err := time.Parse(timeLayout, rawTime)
+		if err != nil {
+			continue
+		}
+
+		snapshots = append(snapshots, core.SnapshotInfo{
+			Id:        filepath.Join(l.localPrefix, name),
+			CreatedAt: parsedTime,
+		})
+	}
+
+	slices.SortFunc(snapshots, func(a, b core.SnapshotInfo) int {
+		if a.CreatedAt.After(b.CreatedAt) {
+			return -1
+		}
+		if a.CreatedAt.Before(b.CreatedAt) {
+			return 1
+		}
+		return 0
+	})
+	return snapshots, nil
+}
+
+func (l *LocalFileBackup) RotateBackups(maxKeep int) error {
+	snapshots, err := l.ListSnapshots()
+	if err != nil {
+		return err
+	}
+	if len(snapshots) <= maxKeep {
+		return nil
+	}
+
+	for _, oldSnapshot := range snapshots[maxKeep:] {
+		if err := os.Remove(oldSnapshot.Id); err != nil && !os.IsNotExist(err) {
+			return fmt.Errorf("failed to prune old snapshot %s: %w", oldSnapshot.Id, err)
+		}
 	}
 	return nil
 }

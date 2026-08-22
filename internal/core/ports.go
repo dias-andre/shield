@@ -2,6 +2,7 @@ package core
 
 import (
 	"errors"
+	"time"
 )
 
 var (
@@ -37,6 +38,11 @@ type StoragePort interface {
 type SupportRawVault interface {
 	LoadRawVault() (*RawVault, error)
 	SaveRawVault(*RawVault) error
+}
+
+type SnapshotInfo struct {
+	Id        string
+	CreatedAt time.Time
 }
 
 type BackupPort interface {
