@@ -17,6 +17,7 @@ require (
 	github.com/godbus/dbus v0.0.0-20190726142602-4481cbc300e2 // indirect
 	github.com/gsterjov/go-libsecret v0.0.0-20161001094733-a6f4afe4910c // indirect
 	github.com/mtibben/percent v0.2.1 // indirect
+	golang.org/x/crypto v0.55.0 // indirect
 	golang.org/x/text v0.41.0 // indirect
 )
 
@@ -30,6 +31,6 @@ require (
 	github.com/mgutz/ansi v0.0.0-20170206155736-9520e82c474b // indirect
 	github.com/pelletier/go-toml/v2 v2.4.3 // direct
 	github.com/spf13/pflag v1.0.9 // indirect
-	golang.org/x/sys v0.27.0 // indirect
-	golang.org/x/term v0.3.0 // indirect
+	golang.org/x/sys v0.47.0 // indirect
+	golang.org/x/term v0.45.0 // indirect
 )
