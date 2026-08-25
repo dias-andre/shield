@@ -9,9 +9,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/dias-andre/shield/cmd/shieldd/server"
 	"github.com/dias-andre/shield/internal/adapters"
 	"github.com/dias-andre/shield/internal/config"
+	"github.com/dias-andre/shield/internal/server"
 	"github.com/dias-andre/shield/internal/services"
 	"github.com/dias-andre/shield/internal/utils"
 )
@@ -57,12 +57,17 @@ func main() {
 		slog.Error("failed to initialize keyring system", "error", err)
 		os.Exit(1)
 	}
+
+	partedKeysystem, err := adapters.NewPartedKeyring()
+	if err != nil {
+		slog.Error("failed to initialize parted keyring system", "error", err)
+	}
 	storage := adapters.NewFileSystemStorage(vaultPath)
 	encryptor := adapters.NewAESEncryptor()
 	backup := adapters.NewLocalFileBackup(backupPath, encryptor, uint8(cfg.Backup.MaxKeep))
 	service := services.NewVaultService(encryptor, storage)
 
-	host := server.NewSession(keysystem, service, backup)
+	host := server.NewSession(keysystem, partedKeysystem, service, backup)
 
 	if err := host.Init(); err != nil {
 		slog.Error("failed to initialize host", "error", err)

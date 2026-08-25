@@ -12,34 +12,24 @@ import (
 	"github.com/dias-andre/shield/internal/utils"
 )
 
-type VaultState int
-
-const (
-	StateUnlocked VaultState = iota
-	StateLocked
-	StateLocking
-)
-
-func (vs VaultState) String() string {
-	return [...]string{"unlocked", "locked", "locking"}[vs]
-}
-
 type Session struct {
-	mu            sync.RWMutex
-	backupTrigger chan struct{}
-	vault         *core.Vault
-	masterKey     []byte
-	keySystem     core.KeySystemPort
-	vaultService  services.VaultService
-	backup        core.BackupPort
+	mu              sync.RWMutex
+	backupTrigger   chan struct{}
+	vault           *core.Vault
+	masterKey       []byte
+	keySystem       core.KeySystemPort
+	partedKeySystem core.KeySystemPort
+	vaultService    services.VaultService
+	backup          core.BackupPort
 }
 
-func NewSession(ks core.KeySystemPort, vs services.VaultService, bp core.BackupPort) *Session {
+func NewSession(ks core.KeySystemPort, ps core.KeySystemPort, vs services.VaultService, bp core.BackupPort) *Session {
 	return &Session{
-		backupTrigger: make(chan struct{}, 1),
-		keySystem:     ks,
-		vaultService:  vs,
-		backup:        bp,
+		backupTrigger:   make(chan struct{}, 1),
+		keySystem:       ks,
+		partedKeySystem: ps,
+		vaultService:    vs,
+		backup:          bp,
 	}
 }
 
@@ -65,7 +55,6 @@ func (s *Session) requestAsyncBackup() {
 
 func (s *Session) Init() error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 
 	key, err := s.keySystem.GetKey()
 	if err != nil {
@@ -98,7 +87,9 @@ func (s *Session) Init() error {
 		return fmt.Errorf("failed to load vault: %w", err)
 	}
 	s.vault = vault
+	s.mu.Unlock()
 	slog.Info("session vault loaded")
+
 	go s.backupWorker()
 	slog.Info("backup thread spawned")
 	return nil
