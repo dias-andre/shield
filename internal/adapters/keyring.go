@@ -1,26 +1,47 @@
 package adapters
 
 import (
-	"encoding/base64"
+	"errors"
 
-	"github.com/zalando/go-keyring"
+	"github.com/99designs/keyring"
+	"github.com/dias-andre/shield/internal/core"
 )
 
-type KeyringSystem struct {
-	serviceName string
-	keyName     string
+type KeyringAdapter struct {
+	ring keyring.Keyring
 }
 
-func (s *KeyringSystem) SaveKey(key []byte) error {
-	stringKey := base64.StdEncoding.EncodeToString(key)
-
-	return keyring.Set(s.serviceName, s.keyName, stringKey)
-}
-
-func (s *KeyringSystem) GetKey() ([]byte, error) {
-	key, err := keyring.Get(s.serviceName, s.keyName)
+func NewKeyringAdapter() (core.KeySystemPort, error) {
+	ring, err := keyring.Open(keyring.Config{
+		ServiceName: "shield-cli",
+	})
 	if err != nil {
 		return nil, err
 	}
-	return base64.StdEncoding.DecodeString(key)
+
+	return &KeyringAdapter{
+		ring: ring,
+	}, nil
+}
+
+func (k *KeyringAdapter) GetKey() ([]byte, error) {
+	data, err := k.ring.Get("master-key")
+	if err != nil {
+		if errors.Is(err, keyring.ErrKeyNotFound) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return data.Data, nil
+}
+
+func (k *KeyringAdapter) SaveKey(key []byte) error {
+	if err := k.ring.Set(keyring.Item{
+		Key:  "master-key",
+		Data: key,
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }

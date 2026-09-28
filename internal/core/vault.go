@@ -48,6 +48,7 @@ type SemVer struct {
 
 type RawVault struct {
 	Version    SemVer
+	Salt       [16]byte
 	Nonce      [12]byte
 	Ciphertext []byte
 }

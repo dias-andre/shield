@@ -32,6 +32,31 @@ type RemoveSSHEntryReply struct {
 
 type EmptyRequest struct{}
 
+type UnlockRequest struct {
+	PIN    []byte
+	Create bool
+	Reset  bool
+}
+type UnlockReply struct {
+	Success    bool
+	ErrorMsg   string
+	BackupPath string
+}
+
+type InspectVaultReply struct {
+	Exists                 bool
+	Version                string
+	Compatibility          string
+	Reason                 string
+	KeyShareChecked        bool
+	KeyShareExists         bool
+	KeyShareValid          bool
+	KeyShareError          string
+	LegacyMasterKeyChecked bool
+	LegacyMasterKeyExists  bool
+	LegacyMasterKeyError   string
+}
+
 type FetchEntriesReply struct {
 	Entries []ServerEntry
 }

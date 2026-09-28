@@ -10,6 +10,7 @@ var (
 	ErrVaultFileCorrupted      = errors.New("vault file corrupted or empty")
 	ErrInvalidMagic            = errors.New("invalid vault magic")
 	ErrInvalidVaultPermissions = errors.New("invalid vault permissions")
+	ErrMasterKeyNotFound       = errors.New("master key not found")
 )
 
 type EncryptorPort interface {
@@ -38,6 +39,14 @@ type StoragePort interface {
 type SupportRawVault interface {
 	LoadRawVault() (*RawVault, error)
 	SaveRawVault(*RawVault) error
+}
+
+type SupportVaultBackup interface {
+	BackupVault() (string, error)
+}
+
+type SupportVaultRestore interface {
+	RestoreVaultBackup(string) error
 }
 
 type SnapshotInfo struct {

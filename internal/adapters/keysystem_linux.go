@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/dias-andre/shield/internal/core"
 	"github.com/godbus/dbus/v5"
 )
 
@@ -13,7 +14,7 @@ const (
 	dbusPath = "/org/freedesktop/secrets"
 )
 
-var ErrMasterKeyNotFound = errors.New("master key not found")
+var ErrMasterKeyNotFound = core.ErrMasterKeyNotFound
 
 type LinuxKeyring struct {
 	conn       *dbus.Conn

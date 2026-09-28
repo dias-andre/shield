@@ -1,6 +1,6 @@
 BINARY_NAME=shield
 DAEMON_NAME=shldd
-VERSION=0.2.1
+VERSION=0.2.0
 LDFLAGS=-ldflags="-s -w"
 
 PLATFORMS=linux

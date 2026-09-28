@@ -6,6 +6,8 @@ import (
 
 	"github.com/dias-andre/shield/internal/api"
 	"github.com/dias-andre/shield/internal/core"
+	"github.com/dias-andre/shield/internal/migrations"
+	"github.com/dias-andre/shield/internal/services"
 )
 
 func (s *Session) Ping(req *uint32, reply *uint32) error {
@@ -14,9 +16,57 @@ func (s *Session) Ping(req *uint32, reply *uint32) error {
 	return nil
 }
 
+func (s *Session) Unlock(req *api.UnlockRequest, reply *api.UnlockReply) error {
+	backupPath, err := s.UnlockWithPIN(req.PIN, req.Create, req.Reset)
+	if err != nil {
+		reply.Success = false
+		reply.ErrorMsg = err.Error()
+		return nil
+	}
+	reply.Success = true
+	reply.BackupPath = backupPath
+	return nil
+}
+
+func (s *Session) Lock(_ api.EmptyRequest, reply *api.UnlockReply) error {
+	s.LockVault()
+	reply.Success = true
+	return nil
+}
+
+func (s *Session) InspectVault(_ api.EmptyRequest, reply *api.InspectVaultReply) error {
+	var info services.VaultInfo
+	var inspection migrations.Inspection
+	var err error
+	if s.migrationManager != nil {
+		inspection, err = s.migrationManager.Inspect()
+		info = inspection.Vault
+	} else {
+		info, err = s.vaultService.InspectVault()
+	}
+	if err != nil {
+		return err
+	}
+	reply.Exists = info.Exists
+	reply.Version = info.Version
+	reply.Compatibility = string(info.Compatibility)
+	reply.Reason = info.Reason
+	reply.KeyShareChecked = inspection.KeyShareChecked
+	reply.KeyShareExists = inspection.KeyShareExists
+	reply.KeyShareValid = inspection.KeyShareValid
+	reply.KeyShareError = inspection.KeyShareError
+	reply.LegacyMasterKeyChecked = inspection.LegacyMasterKeyChecked
+	reply.LegacyMasterKeyExists = inspection.LegacyMasterKeyExists
+	reply.LegacyMasterKeyError = inspection.LegacyMasterKeyError
+	return nil
+}
+
 func (s *Session) FetchEntries(_ api.EmptyRequest, reply *api.FetchEntriesReply) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	if err := s.requireUnlocked(); err != nil {
+		return err
+	}
 	reply.Entries = make([]api.ServerEntry, 0, len(s.vault.Entries))
 	for name, entry := range s.vault.Entries {
 		serverEntry := api.ServerEntry{
@@ -32,6 +82,9 @@ func (s *Session) FetchEntries(_ api.EmptyRequest, reply *api.FetchEntriesReply)
 func (s *Session) CreateEntry(req *api.CreateSSHEntryRequest, reply *api.CreateSSHEntryReply) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := s.requireUnlocked(); err != nil {
+		return err
+	}
 	slog.Info("creating SSH entry", "name", req.Name)
 
 	_, alreadyExists := s.vault.Entries[req.Name]
@@ -72,6 +125,9 @@ func (s *Session) CreateEntry(req *api.CreateSSHEntryRequest, reply *api.CreateS
 func (s *Session) GetServerEntry(req *api.GetServerEntryRequest, reply *api.GetServerEntryReply) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	if err := s.requireUnlocked(); err != nil {
+		return err
+	}
 	entry, exists := s.vault.Entries[req.Name]
 	if exists {
 		*reply = api.GetServerEntryReply{
@@ -92,6 +148,9 @@ func (s *Session) GetServerEntry(req *api.GetServerEntryRequest, reply *api.GetS
 func (s *Session) RemoveEntry(req *api.RemoveSSHEntryRequest, reply *api.RemoveSSHEntryReply) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+	if err := s.requireUnlocked(); err != nil {
+		return err
+	}
 	entry, exists := s.vault.Entries[req.Name]
 	if exists {
 		delete(s.vault.Entries, req.Name)
@@ -117,6 +176,9 @@ func (s *Session) RemoveEntry(req *api.RemoveSSHEntryRequest, reply *api.RemoveS
 func (s *Session) OpenConnection(req *api.GetCredentialsRequest, reply *api.GetCredentialsReply) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	if err := s.requireUnlocked(); err != nil {
+		return err
+	}
 	entry, exists := s.vault.Entries[req.EntryName]
 	if !exists {
 		reply.Success = false
@@ -144,6 +206,9 @@ func (s *Session) OpenConnection(req *api.GetCredentialsRequest, reply *api.GetC
 func (s *Session) FetchKey(req *api.FetchKeyRequest, reply *api.FetchKeyReply) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
+	if err := s.requireUnlocked(); err != nil {
+		return err
+	}
 	entry, exists := s.vault.Entries[req.EntryName]
 
 	if !exists {

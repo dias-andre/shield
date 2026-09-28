@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"log/slog"
 	"net"
@@ -11,12 +12,13 @@ import (
 
 	"github.com/dias-andre/shield/internal/adapters"
 	"github.com/dias-andre/shield/internal/config"
+	"github.com/dias-andre/shield/internal/migrations"
 	"github.com/dias-andre/shield/internal/server"
 	"github.com/dias-andre/shield/internal/services"
 	"github.com/dias-andre/shield/internal/utils"
 )
 
-func main() {
+func getHostSession() *server.Session {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
 	configDir, err := utils.GetConfigDir()
 	if err != nil {
@@ -38,6 +40,31 @@ func main() {
 		slog.Error("failed to resolve backup directory", "error", err)
 		os.Exit(1)
 	}
+
+	storage := adapters.NewFileSystemStorage(vaultPath)
+	encryptor := adapters.NewAESEncryptor()
+	backup := adapters.NewLocalFileBackup(backupPath, encryptor, uint8(cfg.Backup.MaxKeep))
+	service := services.NewVaultService(encryptor, storage)
+	keyShare, keyShareErr := adapters.NewPartedKeyring()
+	if keyShareErr != nil {
+		slog.Warn("Secret Service key share unavailable; setup/unlock requiring key-a will fail", "error", keyShareErr)
+	}
+	legacyMasterKey, legacyKeyErr := adapters.NewKeyringSystem()
+	if legacyKeyErr != nil {
+		slog.Warn("legacy master key unavailable; legacy vault migration will not be available", "error", legacyKeyErr)
+	}
+	migrationManager := migrations.NewManager(&service, keyShare, legacyMasterKey)
+
+	host := server.NewSession(server.SessionConfig{
+		BackupSystem:     backup,
+		VaultService:     service,
+		MigrationManager: migrationManager,
+		Config:           cfg,
+	})
+	return host
+}
+
+func main() {
 	socketPath := utils.GetSocket()
 	if fsErr := os.MkdirAll(socketPath, 0o700); fsErr != nil {
 		slog.Error("failed to prepare socket", "path", socketPath, "err", fsErr)
@@ -51,29 +78,12 @@ func main() {
 		}
 		slog.Info("removed stale socket file", "path", socketPath)
 	}
-
-	keysystem, err := adapters.NewKeyringSystem()
-	if err != nil {
-		slog.Error("failed to initialize keyring system", "error", err)
-		os.Exit(1)
-	}
-
-	partedKeysystem, err := adapters.NewPartedKeyring()
-	if err != nil {
-		slog.Error("failed to initialize parted keyring system", "error", err)
-	}
-	storage := adapters.NewFileSystemStorage(vaultPath)
-	encryptor := adapters.NewAESEncryptor()
-	backup := adapters.NewLocalFileBackup(backupPath, encryptor, uint8(cfg.Backup.MaxKeep))
-	service := services.NewVaultService(encryptor, storage)
-
-	host := server.NewSession(keysystem, partedKeysystem, service, backup)
-
-	if err := host.Init(); err != nil {
+	host := getHostSession()
+	ctx := context.Background()
+	if err := host.Init(ctx); err != nil {
 		slog.Error("failed to initialize host", "error", err)
 		os.Exit(1)
 	}
-	defer host.Destroy()
 
 	if err := rpc.RegisterName("VaultServer", host); err != nil {
 		slog.Error("failed to register RPC host", "error", err)

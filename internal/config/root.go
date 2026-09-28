@@ -13,6 +13,20 @@ type VaultConfig struct {
 	StorageDir string `toml:"storage_dir"`
 }
 
+type VaultLoadMode string
+
+const (
+	VaultLoadModeEager VaultLoadMode = "eager"
+	VaultLoadModeLazy  VaultLoadMode = "lazy"
+	VaultLoadModeAuto  VaultLoadMode = "auto"
+)
+
+type DaemonConfig struct {
+	VaultLoadMode      VaultLoadMode `toml:"vault_load_mode"`
+	KeyringTimeout     int           `toml:"keyring_timeout_seconds"`
+	UnlockCacheMinutes int           `toml:"unlock_cache_minutes"`
+}
+
 type BackupConfig struct {
 	Enabled     bool   `toml:"enabled"`
 	Dir         string `toml:"dir"`
@@ -23,6 +37,7 @@ type BackupConfig struct {
 type Config struct {
 	Vault  VaultConfig  `toml:"vault"`
 	Backup BackupConfig `toml:"backup"`
+	Daemon DaemonConfig `toml:"daemon"`
 }
 
 func DefaultConfig() (*Config, error) {
@@ -44,6 +59,11 @@ func DefaultConfig() (*Config, error) {
 			Dir:         backupPath,
 			MaxKeep:     10,
 			ThreadLimit: 1,
+		},
+		Daemon: DaemonConfig{
+			VaultLoadMode:      VaultLoadModeAuto,
+			KeyringTimeout:     5,
+			UnlockCacheMinutes: 15,
 		},
 	}, nil
 }

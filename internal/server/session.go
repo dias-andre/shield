@@ -2,34 +2,63 @@
 package server
 
 import (
-	"crypto/rand"
+	"context"
 	"fmt"
 	"log/slog"
+	"path/filepath"
 	"sync"
+	"time"
 
+	"github.com/dias-andre/shield/internal/config"
 	"github.com/dias-andre/shield/internal/core"
+	"github.com/dias-andre/shield/internal/migrations"
 	"github.com/dias-andre/shield/internal/services"
-	"github.com/dias-andre/shield/internal/utils"
+)
+
+type VaultState int
+
+const (
+	VaultStateLocked VaultState = iota
+	VaultStateUnlocked
 )
 
 type Session struct {
-	mu              sync.RWMutex
-	backupTrigger   chan struct{}
-	vault           *core.Vault
-	masterKey       []byte
-	keySystem       core.KeySystemPort
-	partedKeySystem core.KeySystemPort
-	vaultService    services.VaultService
-	backup          core.BackupPort
+	mu         sync.RWMutex
+	createMu   sync.Mutex
+	state      VaultState
+	initState  core.VaultInitState
+	initRecord *core.InitializationRecord
+
+	backupTrigger chan struct{}
+	lockTimer     *time.Timer
+
+	vault     *core.Vault
+	masterKey []byte
+
+	vaultService     services.VaultService
+	migrationManager *migrations.Manager
+	backup           core.BackupPort
+	initStore        *services.InitializationStore
+	config           *config.Config
 }
 
-func NewSession(ks core.KeySystemPort, ps core.KeySystemPort, vs services.VaultService, bp core.BackupPort) *Session {
+type SessionConfig struct {
+	BackupSystem     core.BackupPort
+	VaultService     services.VaultService
+	MigrationManager *migrations.Manager
+	Config           *config.Config
+}
+
+func NewSession(cfg SessionConfig) *Session {
 	return &Session{
-		backupTrigger:   make(chan struct{}, 1),
-		keySystem:       ks,
-		partedKeySystem: ps,
-		vaultService:    vs,
-		backup:          bp,
+		backupTrigger: make(chan struct{}, 1),
+
+		vaultService:     cfg.VaultService,
+		migrationManager: cfg.MigrationManager,
+		backup:           cfg.BackupSystem,
+		config:           cfg.Config,
+		state:            VaultStateLocked,
+		initStore:        services.NewInitializationStore(filepath.Dir(cfg.Config.Vault.StorageDir)),
 	}
 }
 
@@ -53,110 +82,97 @@ func (s *Session) requestAsyncBackup() {
 	}
 }
 
-func (s *Session) Init() error {
-	s.mu.Lock()
-
-	key, err := s.keySystem.GetKey()
-	if err != nil {
-		return fmt.Errorf("failed to load master key: %w", err)
-	}
-	if key == nil {
-		slog.Warn("master key not found")
-		slog.Info("generating master key")
-		if err := s.genKey(); err != nil {
-			return err
-		}
-	}
-	s.masterKey = make([]byte, len(key))
-	copy(s.masterKey, key)
-	slog.Info("session master key loaded")
-
-	vaultExists, err := s.vaultService.VaultExists()
-	if err != nil {
-		return err
-	}
-	if !vaultExists {
-		slog.Warn("vault not found")
-		slog.Info("initializing new vault")
-		if err := s.initNewVault(); err != nil {
-			return err
-		}
-	}
-	vault, err := s.vaultService.GetVault(s.masterKey)
-	if err != nil {
-		return fmt.Errorf("failed to load vault: %w", err)
-	}
-	s.vault = vault
-	s.mu.Unlock()
-	slog.Info("session vault loaded")
-
-	go s.backupWorker()
-	slog.Info("backup thread spawned")
-	return nil
-}
-
-func (s *Session) genKey() error {
-	key := make([]byte, 32)
-	if _, err := rand.Read(key); err != nil {
-		return err
-	}
-	if err := s.keySystem.SaveKey(key); err != nil {
-		return err
-	}
-	s.masterKey = make([]byte, len(key))
-	copy(s.masterKey, key)
-	return nil
-}
-
-func (s *Session) initNewVault() error {
-	vault := s.vaultService.InitVault()
-	if err := s.vaultService.SaveVault(&vault, s.masterKey); err != nil {
-		return err
-	}
-	s.vault = &vault
-	return nil
-}
-
-func (s *Session) Destroy() {
+func (s *Session) Init(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	utils.Clear(s.masterKey)
-	s.vault.Erase()
+	_ = ctx
+	s.initState = core.InitDeferredLazy
+	s.recordInit(core.InitDeferredLazy, "vault remains locked until PIN unlock")
+	return nil
 }
 
-func (s *Session) Setup() error {
-	slog.Info("starting shield setup")
-	key, err := s.keySystem.GetKey()
-	if err != nil {
-		return err
+func (s *Session) UnlockWithPIN(pin []byte, create, reset bool) (string, error) {
+	defer clear(pin)
+	if create {
+		s.createMu.Lock()
+		defer s.createMu.Unlock()
 	}
-	if key != nil {
-		slog.Info("master key already exists")
+	s.mu.RLock()
+	if s.state == VaultStateUnlocked && !create && !reset {
+		s.mu.RUnlock()
+		return "", nil
+	}
+	s.mu.RUnlock()
+	if s.migrationManager == nil {
+		return "", fmt.Errorf("vault key manager is not configured")
+	}
+	var result *migrations.Result
+	var err error
+	if reset {
+		result, err = s.migrationManager.ResetWithPIN(pin)
+	} else if create {
+		result, err = s.migrationManager.InitializeWithPIN(pin)
 	} else {
-		slog.Info("generating new master key")
-		key = make([]byte, 32)
-		if _, err := rand.Read(key); err != nil {
-			return err
-		}
-		if err := s.keySystem.SaveKey(key); err != nil {
-			return err
-		}
-		slog.Info("master key saved to keyring")
+		result, err = s.migrationManager.UnlockWithPIN(pin)
 	}
-
-	vaultExists, err := s.vaultService.VaultExists()
 	if err != nil {
-		return err
+		return "", err
 	}
-	if !vaultExists {
-		slog.Info("initializing new vault")
-		vault := s.vaultService.InitVault()
-		if err := s.vaultService.SaveVault(&vault, key); err != nil {
-			return err
-		}
-		slog.Info("vault initialized")
-		return nil
+	vault, key := result.Vault, result.Key
+	if result.BackupPath != "" {
+		slog.Info("vault migration completed", "from_version", result.FromVersion, "to_version", result.ToVersion, "backup", result.BackupPath)
 	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.lockTimer != nil {
+		s.lockTimer.Stop()
+	}
+	clear(s.masterKey)
+	if s.vault != nil {
+		s.vault.Erase()
+	}
+	s.masterKey, s.vault = key, vault
+	s.state = VaultStateUnlocked
+	minutes := s.config.Daemon.UnlockCacheMinutes
+	if minutes <= 0 {
+		minutes = 15
+	}
+	s.lockTimer = time.AfterFunc(time.Duration(minutes)*time.Minute, s.lockVault)
+	return result.BackupPath, nil
+}
 
+func (s *Session) lockVault() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.lockTimer != nil {
+		s.lockTimer.Stop()
+		s.lockTimer = nil
+	}
+	clear(s.masterKey)
+	s.masterKey = nil
+	if s.vault != nil {
+		s.vault.Erase()
+		s.vault = nil
+	}
+	s.state = VaultStateLocked
+}
+
+func (s *Session) LockVault() { s.lockVault() }
+
+func (s *Session) requireUnlocked() error {
+	if s.state != VaultStateUnlocked || s.vault == nil {
+		return fmt.Errorf("vault is locked; run `shield unlock`")
+	}
 	return nil
+}
+
+func (s *Session) recordInit(state core.VaultInitState, reason string) {
+	record := &core.InitializationRecord{
+		State:     state,
+		ErrorMsg:  reason,
+		Timestamp: time.Now(),
+	}
+	if err := s.initStore.Save(record); err != nil {
+		slog.Error("failed to save init record", "error", err)
+	}
 }

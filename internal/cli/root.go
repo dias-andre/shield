@@ -14,7 +14,6 @@ import (
 	"os"
 
 	"github.com/dias-andre/shield/internal/adapters"
-	"github.com/dias-andre/shield/internal/core"
 	"github.com/dias-andre/shield/internal/services"
 	"github.com/dias-andre/shield/internal/utils"
 	"github.com/spf13/cobra"
@@ -22,7 +21,6 @@ import (
 
 var (
 	vaultSystem  services.VaultService
-	keysystem    core.KeySystemPort
 	globalClient *rpc.Client
 )
 
@@ -30,7 +28,7 @@ var rootCmd = &cobra.Command{
 	Use:           "shield",
 	SilenceErrors: true,
 	SilenceUsage:  true,
-	Version:       "0.2.1",
+	Version:       "0.2.0",
 	Short:         "Tool for managing encrypted SSH keys",
 }
 
@@ -43,11 +41,6 @@ func init() {
 	encryptor := adapters.NewAESEncryptor()
 	repo := adapters.NewFileSystemStorage(datapath)
 	vaultSystem = services.NewVaultService(encryptor, repo)
-	keysystem, err = adapters.NewKeyringSystem()
-	if err != nil {
-		fmt.Printf("Failed to initialize keyring system: %v\n", err)
-		os.Exit(1)
-	}
 }
 
 func connectRPC() error {

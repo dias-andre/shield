@@ -13,7 +13,9 @@ type PartedKeyring struct {
 
 func NewPartedKeyring() (core.KeySystemPort, error) {
 	ring, err := keyring.Open(keyring.Config{
-		ServiceName: "shield-cli",
+		ServiceName:             "shield-cli",
+		AllowedBackends:         []keyring.BackendType{keyring.SecretServiceBackend},
+		LibSecretCollectionName: "login",
 	})
 	if err != nil {
 		return nil, err
