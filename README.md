@@ -1,6 +1,6 @@
-# Shield CLI
+# Shield CLI (Linux)
 
-A secure, fast, and interactive command-line interface written in Go to manage your SSH servers, and private keys.
+A secure, fast, and interactive command-line interface written in Go to manage your SSH servers and private keys. Shield currently supports Linux only.
 
 Shield acts as a local encrypted vault for your infrastructure credentials. Instead of leaving private `.pem` or `id_rsa` files lying around in plaintext, Shield encrypts everything using **AES-GCM 256-bit** encryption. The master key is never stored in files; it is securely managed by your Operating System's native Keyring.
 
@@ -27,6 +27,31 @@ I believe Shield is a strong candidate for enhancing your daily workflow.
 
 ## Installation
 
+### Linux (user install)
+
+The installer places `shield` and `shldd` in `~/.local/bin`, installs the
+systemd user unit in `~/.config/systemd/user`, and enables the daemon without
+requiring `sudo`. It downloads a versioned release archive and verifies its
+SHA-256 checksum.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dias-andre/shield/main/install.sh | sh
+```
+
+By default this installs version `0.2.0`. Select another release or paths with
+options or environment variables:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/dias-andre/shield/main/install.sh \
+  | sh -s -- --version 0.2.0 --bin-dir "$HOME/.local/bin"
+```
+
+Use `--no-start` to install without enabling the user service. To choose a
+different repository or install directories, pass `--repo`, `--bin-dir`, and
+`--systemd-dir`; equivalent `SHIELD_REPO`, `SHIELD_BIN_DIR`,
+`SHIELD_SYSTEMD_DIR`, `SHIELD_VERSION`, and `SHIELD_START_SERVICE` environment
+variables are also supported. After installation, run `shield setup`.
+
 ### Arch Linux (Native Package)
 
 Arch Linux users can compile and install Shield directly using the provided `PKGBUILD`. This ensures the application is tracked by `pacman`.
@@ -46,10 +71,8 @@ Download the latest release from the [Releases](https://github.com/dias-andre/sh
 
 | Platform | Architecture | File |
 |----------|--------------|------|
-| Linux    | x86_64       | `shield_0.1.0_linux_amd64.tar.gz` |
-| Linux    | ARM64        | `shield_0.1.0_linux_arm64.tar.gz` |
-| macOS    | x86_64       | `shield_0.1.0_darwin_amd64.tar.gz` |
-| macOS    | ARM64        | `shield_0.1.0_darwin_arm64.tar.gz` |
+| Linux    | x86_64       | `shield_0.2.0_linux_amd64.tar.gz` |
+| Linux    | ARM64        | `shield_0.2.0_linux_arm64.tar.gz` |
 
 Extract and install:
 

@@ -2,7 +2,7 @@
 Description=Shield Key Vault Daemon
 
 [Service]
-ExecStart=/usr/bin/shldd
+ExecStart=@SHIELD_BIN_DIR@/shldd
 Restart=always
 RestartSec=3
 
